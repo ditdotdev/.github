@@ -1,6 +1,3 @@
-Please consult the (Contribution Guidelines)[CONTRIBUTING.md], and check for
-any existing open PRs, prior to submitting a pull request.
-
 ## Issues Addressed
 
 Note any issues addressed by this change with one `Fixes #` statement per line.

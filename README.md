@@ -10,5 +10,9 @@ extend or replace these defaults as needed.
  * [Code of Conduct](CODE_OF_CONDUCT.md)
  * [Code owners](CODEOWNERS)
  * [Maintainers](MAINTAINERS.md)
- * [Resources](RESOURCES.md)
+ * [Support Resources](SUPPORT.md)
+ * Issue Templates
+   * [Bug Report](ISSUE_TEMPLATE/bug_report.md)
+   * [Feature Request](ISSUE_TEMPLATE/feature_request.md)
+ * [Pull Request Template](PULL_REQUEST_TEMPLATE.md)
  * [License](LICENSE)
