@@ -1,3 +1,7 @@
-# Default code owners for all Titan community repositories
+#
+# Code owners do not propagate to all repos, so this only affects the
+# .github repository. But this should be re-created in each of the Titan
+# community repositories.
+#
 
-*   @mcred @eschrock
+*   @titan-data/maintainers
