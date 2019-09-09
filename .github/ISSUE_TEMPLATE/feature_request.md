@@ -1,5 +1,5 @@
 ---
-title: 'Feature Request'
+name: 'Feature Request'
 about: Suggest a new idea
 labels: enhancement
 ---
