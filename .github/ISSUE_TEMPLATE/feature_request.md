@@ -1,7 +1,7 @@
 ---
 name: 'Feature Request'
 about: Suggest a new idea
-labels: enhancement
+labels: 'Type: Feature'
 ---
 
 ## Problem
