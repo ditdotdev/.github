@@ -20,6 +20,44 @@ experiences, include closing new issues out as a duplicate.
 All issues should follow the issue request template used by the project when
 opening new issue requests.
 
+## Code Cleanliness
+
+We believe in community ownership of code. Once you push your code to a shared
+repository, it is no longer "yours". This means it must be understandable,
+testable, and evolvable by others in the community. While there is always
+personal artistry and craft to code, we expected all contributions:
+
+   * Follow the style of existing code to make it easy for developers to move
+     between different parts of the code. Projects are encouraged to
+     programmatically enforce style when possible.
+   * Be well-commented such that others can understand the purpose and flow
+     of the code. This does not mean every line or function needs an associated
+     comments, but that comments should help explain why things were done the
+     way they were, how pieces fit together into a bigger picture, or how
+     some potentially confusing bit of code operations.
+   * Include sufficient tests and coverage so others can validate functionality
+     in the face of other changes. Projects are encouraged to have rigorous
+     automated tests and code coverage reports as part of the development
+     process.
+
+## Copyright Notices
+
+The Titan community does not require a Contributor Agreement or copyright
+assignment. Because all contributors retain their copyright regardless of
+whether they include a notice or not, the community follows the Cloud
+Native Computing Foundation's [copyright guidelines](https://github.com/cncf/foundation/blob/master/copyright-notices.md).
+When copyright notices are included, projects are encouraged to use a standard
+format:
+
+```
+Copyright The Titan Project Contributors.
+```
+
+This minimizes the overhead of trying to keep copyright names and dates up
+to date over time. This is a recommendation, not a requirement, and contributors
+(or their employers) that wish to include their own copyright statements can
+choose to do so.
+
 ## Pull Request Process
 
 To make a change, fork the repository and make any changes to your copy on
