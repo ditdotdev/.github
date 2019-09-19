@@ -6,13 +6,13 @@ interested in improving the Titan project.
 ## Issues
 
 If you're struggling with something, but are unsure if it's a bug or missing
-feature, please contact the community through [available resources](RESOURCES.md)
-before submitting a new issue. It could simply be a misconfiguration or
-misunderstanding. If you do believe that it is a bug or missing feature,
-please search existing issues to see if something similar has already been
-reported.
+feature, please contact the community through available [support
+resources](SUPPORT.md) before submitting a new issue. It could simply be a
+misconfiguration or misunderstanding. If you do believe that it is a bug or
+missing feature, please search existing issues to see if something similar has
+already been reported.
 
-When making a chance, it is always recommended to first file an issue that
+When making a change, it is always recommended to first file an issue that
 describes the problem or feature being added. This creates a space for
 dialog and discussion, and a place where other users can associate their
 experiences, include closing new issues out as a duplicate.
@@ -32,9 +32,9 @@ personal artistry and craft to code, we expected all contributions:
      programmatically enforce style when possible.
    * Be well-commented such that others can understand the purpose and flow
      of the code. This does not mean every line or function needs an associated
-     comments, but that comments should help explain why things were done the
-     way they were, how pieces fit together into a bigger picture, or how
-     some potentially confusing bit of code operations.
+     comment. Comments should help explain why things were done the way they
+     were, how pieces fit together into a bigger picture, or how some
+     potentially confusing bit of code operations.
    * Include sufficient tests and coverage so others can validate functionality
      in the face of other changes. Projects are encouraged to have rigorous
      automated tests and code coverage reports as part of the development
@@ -105,8 +105,11 @@ for each pull request. More complex tests should be run nightly and with each
 release. All builds and tests should post alerts to the Titan community slack
 workspace.
 
-New releases are triggered by creating a new draft release on GitHub. This should
-trigger an automated build process to build, publish artifacts, and optionally
-finalize the release. All artifacts should be published via GitHub or an
+The mechanism by which releases are triggered can vary, but are typically
+done as a result of pushing a change or tag to the master branch.
+All artifacts should be published via GitHub, through the Titan
+community [AWS account](https://github.com/titan-data/community-aws) or an
 appropriate package repository (DockerHub, Maven, etc). All third party
-packages should be published under a `titan-data` namespace.
+packages should be published under a `io.titan-data` namespace, or
+`io.titandata` if hyphens are not allowed (as it the case for java
+packages, for example).
