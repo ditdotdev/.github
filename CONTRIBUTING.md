@@ -1,6 +1,6 @@
 # Titan Community Contributions
 
-Titan is an open community that welcomes contributions from anyone that is
+Titan is an open community that welcomes contributions from anyone who is
 interested in improving the Titan project.
 
 ## Issues
@@ -25,7 +25,7 @@ opening new issue requests.
 We believe in community ownership of code. Once you push your code to a shared
 repository, it is no longer "yours". This means it must be understandable,
 testable, and evolvable by others in the community. While there is always
-personal artistry and craft to code, we expected all contributions:
+personal artistry and craft to code, we expect all contributions:
 
    * Follow the style of existing code to make it easy for developers to move
      between different parts of the code. Projects are encouraged to
@@ -34,7 +34,7 @@ personal artistry and craft to code, we expected all contributions:
      of the code. This does not mean every line or function needs an associated
      comment. Comments should help explain why things were done the way they
      were, how pieces fit together into a bigger picture, or how some
-     potentially confusing bit of code operations.
+     potentially confusing bit of code operates.
    * Include sufficient tests and coverage so others can validate functionality
      in the face of other changes. Projects are encouraged to have rigorous
      automated tests and code coverage reports as part of the development
@@ -70,8 +70,8 @@ The pull request will run through any automated checks for the repository. If
 any of these checks fail, please fix any issues and re-submit. The appropriate
 code owners will then review your pull request. If they provide feedback that
 must be addressed, please do so and update the pull request. When all checks
-and feedback has been addressed, the pull request will be accepted and merged
-into master.
+have passed and any feedback has been addressed, the pull request will be
+accepted and merged into master.
 
 By default, Titan projects will [squash and merge](https://help.github.com/en/articles/about-pull-request-merges)
 all your commits. This will reduce any commit history down to a single commit
@@ -80,7 +80,7 @@ understand, and you don't have to worry about any intermediate commits (like
 "undo this thing that didn't work") being part of the history. Anyone can
 reference the pull request to see the more detailed discussion and history
 of the change. The downside is that if you are addressing multiple issues in one
-pull request, it is difficult to known which changes correspond to which issue.
+pull request, it is difficult to know which changes correspond to which issue.
 For this reason, it is recommended that each pull request address only a single
 issue.
 
