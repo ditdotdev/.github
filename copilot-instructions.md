@@ -125,6 +125,7 @@ This handles Docker cleanup, ZFS pool recreation, and complete Titan reinstallat
 - **Cross-platform builds**: `Makefile` release targets
 - **End-to-end tests**: `tests/endtoend/` with VexRun YAML configs
 - **Docker configuration**: `Dockerfile` (includes ZFS utilities + socat)
+- **Release process**: `RELEASE.md` in main titan repository
 
 ## Development Environment Setup
 
