@@ -117,6 +117,17 @@ cd cleanslate
 
 This handles Docker cleanup, ZFS pool recreation, and complete Titan reinstallation. Essential for troubleshooting integration issues.
 
+## Workspace Management
+
+The Titan ecosystem is organized as a VS Code multi-root workspace. To get the complete list of repositories:
+
+```bash
+# From any repository directory in /c/dev
+cat ../titan.code-workspace
+```
+
+This workspace file contains all component repositories and is the authoritative source for determining which repositories are part of the Titan ecosystem.
+
 ## File Locations for Common Tasks
 
 - **Adding CLI commands**: `internal/app/commands/`
@@ -126,6 +137,7 @@ This handles Docker cleanup, ZFS pool recreation, and complete Titan reinstallat
 - **End-to-end tests**: `tests/endtoend/` with VexRun YAML configs
 - **Docker configuration**: `Dockerfile` (includes ZFS utilities + socat)
 - **Release process**: `RELEASE.md` in main titan repository
+- **Workspace configuration**: `titan.code-workspace` in `/c/dev` directory
 
 ## Development Environment Setup
 
