@@ -1,7 +1,7 @@
-# Titan Community Contributions
+# Datadatdat Community Contributions
 
-Titan is an open community that welcomes contributions from anyone who is
-interested in improving the Titan project.
+Datadatdat welcomes contributions from authorized collaborators who are
+interested in improving the Datadatdat platform.
 
 ## Issues
 
@@ -42,7 +42,7 @@ personal artistry and craft to code, we expect all contributions:
 
 ## Copyright Notices
 
-The Titan community does not require a Contributor Agreement or copyright
+The Datadatdat community does not require a Contributor Agreement or copyright
 assignment. Because all contributors retain their copyright regardless of
 whether they include a notice or not, the community follows the Cloud
 Native Computing Foundation's [copyright guidelines](https://github.com/cncf/foundation/blob/master/copyright-notices.md).
@@ -50,7 +50,7 @@ When copyright notices are included, projects are encouraged to use a standard
 format:
 
 ```
-Copyright The Titan Project Contributors.
+Copyright Datadatdat.
 ```
 
 This minimizes the overhead of trying to keep copyright names and dates up
@@ -73,7 +73,7 @@ must be addressed, please do so and update the pull request. When all checks
 have passed and any feedback has been addressed, the pull request will be
 accepted and merged into master.
 
-By default, Titan projects will [squash and merge](https://help.github.com/en/articles/about-pull-request-merges)
+By default, Datadatdat projects will [squash and merge](https://help.github.com/en/articles/about-pull-request-merges)
 all your commits. This will reduce any commit history down to a single commit
 in the permanent history. This keeps the master history clean and easy to
 understand, and you don't have to worry about any intermediate commits (like
@@ -91,25 +91,25 @@ this format to simplify the process.
 
 ## Branches and Releases
 
-By default, all Titan projects follow the [GitHub Flow](https://guides.github.com/introduction/flow/)
+By default, all Datadatdat projects follow the [GitHub Flow](https://guides.github.com/introduction/flow/)
 model. This means that all pull requests are merged to `master`, and releases
 are triggered by creating a release tag in the master branch. Contributors
 should fork repos into their own GitHub space where they can commit updates
 and collaborate with others. In rare circumstances, a feature branch can
-be created within the Titan community repository, though this practice is
+be created within the Datadatdat community repository, though this practice is
 generally discouraged. The master branch is protected - no one can directly
 push to the branch, and only maintainers can accept pull requests.
 
 Any "fast" checks (style, build, unit tests, etc) should be automatically run
 for each pull request. More complex tests should be run nightly and with each
-release. All builds and tests should post alerts to the Titan community slack
+release. All builds and tests should post alerts to the Datadatdat community slack
 workspace.
 
 The mechanism by which releases are triggered can vary, but are typically
 done as a result of pushing a change or tag to the master branch.
-All artifacts should be published via GitHub, through the Titan
-community [AWS account](https://github.com/titan-data/community-aws) or an
-appropriate package repository (DockerHub, Maven, etc). All third party
-packages should be published under a `io.titan-data` namespace, or
-`io.titandata` if hyphens are not allowed (as it the case for java
-packages, for example).
+All artifacts should be published via GitHub, through the Datadatdat
+[AWS account](https://github.com/datadatdat/community-aws) or an
+appropriate package repository (DockerHub, Maven, etc). All packages
+should be published under a `datadatdat` namespace for Docker images, 
+`io.datadatdat` namespace for other packages, or `io.datadatdatdata` 
+if hyphens are not allowed (as is the case for Java packages).

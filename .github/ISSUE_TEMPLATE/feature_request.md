@@ -1,7 +1,8 @@
 ---
 name: 'Feature Request'
 about: Suggest a new idea
-labels: 'Type: Feature'
+labels: 'feature'
+assignees: ''
 ---
 
 ## Problem

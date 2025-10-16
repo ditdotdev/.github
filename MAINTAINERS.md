@@ -1,6 +1,6 @@
 # Maintainers
 
-Unless otherwise noted, all repositories are maintained by the Titan
+Unless otherwise noted, all repositories are maintained by the Datadatdat
 community maintainers:
 
    * Derek Smart ([mcred](https://github.com/mcred))([derek.smart@delphix.com](derek.smart@delphix.com))
