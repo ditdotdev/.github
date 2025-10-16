@@ -1,7 +1,7 @@
 #
 # Code owners do not propagate to all repos, so this only affects the
-# .github repository. But this should be re-created in each of the Titan
+# .github repository. But this should be re-created in each of the Datadatdat
 # community repositories.
 #
 
-*   @titan-data/maintainers
+*   @datadatdat/maintainers

@@ -1,7 +1,8 @@
 ---
 name: 'Bug Report'
 about: Create a report to help us improve
-labels: 'Type: Bug'
+labels: 'bug'
+assignees: ''
 ---
 
 ## Expected Behavior
@@ -18,7 +19,7 @@ Describe in as much detail as possible how to reproduce the problem.
 
 ## Version
 
-Indicate the relevant versions of components. This may include the Titan
+Indicate the relevant versions of components. This may include the Datadatdat
 package version, operating system version, or other components relevant to
 the project.
 

@@ -1,12 +1,12 @@
-# Titan Data Management Platform - AI Agent Instructions
+# Datadatdat Data Management Platform - AI Agent Instructions
 
 ## Architecture Overview
 
-Titan is a multi-component data versioning platform with ZFS integration and Docker-based containerization. The ecosystem consists of:
+Datadatdat is a proprietary multi-component data versioning platform with ZFS integration and Docker-based containerization. The ecosystem consists of:
 
-- **titan** (CLI) - Go-based CLI that orchestrates data versioning operations
-- **titan-server** - Core Docker container providing ZFS storage, PostgreSQL, and API services  
-- **titan-client-go** - Auto-generated Go client from OpenAPI spec
+- **datadatdat** (CLI) - Go-based CLI that orchestrates data versioning operations
+- **datadatdat-server** - Core Docker container providing ZFS storage, PostgreSQL, and API services  
+- **datadatdat-client-go** - Auto-generated Go client from OpenAPI spec
 - **Remote providers** - Dual-language (Go/Kotlin) implementations for S3, SSH, S3Web storage backends
 - **SDK libraries** - `remote-sdk-go` and `remote-sdk` for building new remote providers
 - **Testing framework** - `vexrun` (Java) for YAML-driven end-to-end tests
@@ -19,12 +19,12 @@ Titan is a multi-component data versioning platform with ZFS integration and Doc
 make release   # Creates cross-platform binaries in release/
 
 # Individual platform builds
-make windows   # Creates titan.exe  
+make windows   # Creates datadatdat.exe  
 make linux-amd64
 make darwin-arm64
 
 # Local development build
-make build     # Creates build/titan
+make build     # Creates build/datadatdat
 ```
 
 ### Testing Infrastructure
@@ -40,7 +40,7 @@ make test-ssh-workflow     # Requires SSH key setup
 
 **Critical Test Recovery**: After failed `make e2e` runs, always reset before retrying:
 ```bash
-./titan.exe uninstall -f   # Cleans up corrupted test state
+./datadatdat.exe uninstall -f   # Cleans up corrupted test state
 make e2e                   # Safe to retry after uninstall
 ```
 
@@ -50,7 +50,7 @@ make e2e                   # Safe to retry after uninstall
 cd cleanslate
 .\setup-zfs-pools.ps1 -Clean -VerifyDocker
 ```
-This creates required ZFS pools that Titan containers depend on.
+This creates required ZFS pools that Datadatdat containers depend on.
 
 ## Provider Architecture Pattern
 
@@ -69,23 +69,23 @@ Both implement the `remote-sdk` interface for push/pull operations to external s
 - All repos follow semantic versioning with `v0.x.x` tags
 
 ### Docker Integration
-- Main container: `datadatdat/titan:latest` (server + ZFS + PostgreSQL)
+- Main container: `datadatdat/datadatdat:latest` (server + ZFS + PostgreSQL)
 - ZFS builder: `datadatdat/zfs-builder:latest` (for kernel module compilation)
 - SSH test: `datadatdat/ssh-test-server:latest` (testing only)
 - Use `--registry` flag to override Docker Hub registry
 
 #### Container Orchestration Details
-The `titan-server` container runs multiple services:
+The `datadatdat-server` container runs multiple services:
 - **ZFS utilities** - Direct filesystem integration for data versioning
 - **PostgreSQL database** - Metadata storage for commits, repositories, and remote configurations
 - **docker-volume-proxy** - Bridges Docker volumes to ZFS datasets
-- **Titan API server** - REST endpoints consumed by CLI and client libraries
+- **Datadatdat API server** - REST endpoints consumed by CLI and client libraries
 
-**Volume Management**: Titan creates ZFS datasets that appear as Docker volumes. The volume proxy component requires `socat` package (included in Dockerfile) to handle volume driver communication between Docker daemon and ZFS subsystem.
+**Volume Management**: Datadatdat creates ZFS datasets that appear as Docker volumes. The volume proxy component requires `socat` package (included in Dockerfile) to handle volume driver communication between Docker daemon and ZFS subsystem.
 
 **Pool Requirements**: 
-- `titan-docker` pool - Required for container volume operations
-- `titan` pool - Optional but recommended for CLI operations
+- `datadatdat-docker` pool - Required for container volume operations
+- `datadatdat` pool - Optional but recommended for CLI operations
 
 ### Testing Framework (VexRun)
 Tests are YAML-driven using custom `vexrun` Java runner:
@@ -99,13 +99,15 @@ Main CLI imports remote providers directly:
 ```go
 github.com/datadatdat/s3-remote-go v0.2.3
 github.com/datadatdat/ssh-remote-go v0.2.2
-github.com/datadatdat/titan-client-go v0.1.3
+github.com/datadatdat/datadatdat-client-go v0.1.3
 ```
 
 ### Version Management
 - CLI version defined in `internal/app/Version.go`
 - Client libraries auto-generated from server OpenAPI spec
 - Remote providers maintain independent semantic versions
+- All repositories use automated GitHub Actions for releases
+- Docker images published to `datadatdat/*` namespace on Docker Hub
 
 ## Clean Slate Testing
 
@@ -115,29 +117,48 @@ cd cleanslate
 .\clean-slate-automation.ps1 -Verbose
 ```
 
-This handles Docker cleanup, ZFS pool recreation, and complete Titan reinstallation. Essential for troubleshooting integration issues.
+This handles Docker cleanup, ZFS pool recreation, and complete Datadatdat reinstallation. Essential for troubleshooting integration issues.
+
+## Demo Infrastructure
+
+The datadatdat-demos repository contains sample datasets for testing and examples:
+
+### S3 Demo Bucket
+- **Production bucket:** `demo-datadatdat`
+- **Web endpoint:** `s3web://demo-datadatdat.s3-website-us-east-1.amazonaws.com`
+- **Available demos:** postgres, dynamodb hello-world examples
+- **Scripts:** `build.sh` → `publish.sh` → `destroy.sh` workflow
+
+### Demo Script Patterns
+```bash
+# PostgreSQL demo (uses postgres:latest with trust auth)
+d3 run -n hello-world-postgres -e POSTGRES_HOST_AUTH_METHOD=trust postgres:latest
+
+# DynamoDB demo (uses port 8001 to avoid conflicts)
+d3 run -n hello-world-dynamodb -P datadatdat/dynamodb-local:latest -- -p 8001:8000
+```
 
 ## Workspace Management
 
-The Titan ecosystem is organized as a VS Code multi-root workspace. To get the complete list of repositories:
+The Datadatdat ecosystem is organized as a VS Code multi-root workspace. To get the complete list of repositories:
 
 ```bash
 # From any repository directory in /c/dev
-cat ../titan.code-workspace
+cat ../datadatdat.code-workspace
 ```
 
-This workspace file contains all component repositories and is the authoritative source for determining which repositories are part of the Titan ecosystem.
+This workspace file contains all component repositories and is the authoritative source for determining which repositories are part of the Datadatdat ecosystem.
 
 ## File Locations for Common Tasks
 
 - **Adding CLI commands**: `internal/app/commands/`
 - **Provider interface**: `internal/app/providers/Provider.go`
-- **Main entry point**: `cmd/titan/titan.go`
+- **Main entry point**: `cmd/datadatdat/datadatdat.go`
 - **Cross-platform builds**: `Makefile` release targets
 - **End-to-end tests**: `tests/endtoend/` with VexRun YAML configs
 - **Docker configuration**: `Dockerfile` (includes ZFS utilities + socat)
-- **Release process**: `RELEASE.md` in main titan repository
-- **Workspace configuration**: `titan.code-workspace` in `/c/dev` directory
+- **Release process**: `RELEASE.md` in main datadatdat repository
+- **Workspace configuration**: `datadatdat.code-workspace` in `/c/dev` directory
 
 ## Development Environment Setup
 

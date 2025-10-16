@@ -1,12 +1,12 @@
-# Titan Community Support
+# Datadatdat Community Support
 
-The Titan community home can be found at [titan-data.io](https://titan-data.io).
-There you can find a [getting started](https://titan-data.io/getting-started)
-guide as well as [documentation](https://titan-data.io/docs).
+The Datadatdat community home can be found at [datadatdat.io](https://datadatdat.io).
+There you can find a [getting started](https://datadatdat.io/getting-started)
+guide as well as [documentation](https://datadatdat.io/docs).
 
 To connect with members of the community, head over to the
-[community page](https://titan-data.io/community) where you can
-[join](https://join.titan-data.io) the slack workspace. There, you can
+[community page](https://datadatdat.io/community) where you can
+[join](https://join.datadatdat.io) the slack workspace. There, you can
 ask questions and get help. If you're not sure whether something is a bug
 or not, be sure to ask there first.
 
