@@ -9,7 +9,7 @@ Datadatdat is a proprietary multi-component data versioning platform with ZFS in
 - **datadatdat-client-go** - Auto-generated Go client from OpenAPI spec
 - **Remote providers** - Dual-language (Go/Kotlin) implementations for S3, SSH, S3Web storage backends
 - **SDK libraries** - `remote-sdk-go` and `remote-sdk` for building new remote providers
-- **Testing framework** - `vexrun` (Java) for YAML-driven end-to-end tests
+- **Testing framework** - BATS (Bash Automated Testing System) for cross-platform end-to-end tests
 
 ## Critical Development Workflows
 
@@ -87,11 +87,16 @@ The `datadatdat-server` container runs multiple services:
 - `datadatdat-docker` pool - Required for container volume operations
 - `datadatdat` pool - Optional but recommended for CLI operations
 
-### Testing Framework (VexRun)
-Tests are YAML-driven using custom `vexrun` Java runner:
+### Testing Framework (BATS)
+Tests use BATS (Bash Automated Testing System) for cross-platform compatibility:
 ```bash
-vexrun -f tests/endtoend/infrastructure/Install.yml
-vexrun -d tests/endtoend/getting-started
+# Run individual test suites
+bats tests/endtoend/infrastructure/install.bats
+bats tests/endtoend/getting-started/getting-started.bats
+
+# Run via Makefile targets
+make test-install
+make test-getting-started
 ```
 
 ### Go Module Dependencies
@@ -155,14 +160,14 @@ This workspace file contains all component repositories and is the authoritative
 - **Provider interface**: `internal/app/providers/Provider.go`
 - **Main entry point**: `cmd/datadatdat/datadatdat.go`
 - **Cross-platform builds**: `Makefile` release targets
-- **End-to-end tests**: `tests/endtoend/` with VexRun YAML configs
+- **End-to-end tests**: `tests/endtoend/` with BATS test files
 - **Docker configuration**: `Dockerfile` (includes ZFS utilities + socat)
 - **Release process**: `RELEASE.md` in main datadatdat repository
 - **Workspace configuration**: `datadatdat.code-workspace` in `/c/dev` directory
 
 ## Development Environment Setup
 
-1. **Prerequisites**: Go 1.25.1+, Docker Desktop, Make, Java (for testing)
+1. **Prerequisites**: Go 1.25.1+, Docker Desktop, Make, BATS (npm install -g bats)
 2. **Windows only**: Run ZFS pool setup script first
 3. **AWS testing**: Configure `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 4. **SSH testing**: Generate SSH keypair using provided scripts
