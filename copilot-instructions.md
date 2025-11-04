@@ -130,7 +130,7 @@ The datadatdat-demos repository contains sample datasets for testing and example
 
 ### S3 Demo Bucket
 - **Production bucket:** `demo-datadatdat`
-- **Web endpoint:** `s3web://demo-datadatdat.s3-website-us-east-1.amazonaws.com`
+- **Web endpoint:** `s3web://demo-datadatdat.s3-website-us-west-2.amazonaws.com`
 - **Available demos:** postgres, dynamodb hello-world examples
 - **Scripts:** `build.sh` → `publish.sh` → `destroy.sh` workflow
 
