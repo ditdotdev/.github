@@ -172,6 +172,71 @@ When creating GitHub issues with `gh issue create`:
 - Use clear titles and detailed markdown bodies
 - Link related issues/PRs in the body text when relevant
 
+## Git and GitHub Workflow Patterns
+
+### Standard PR Workflow
+1. Create feature/fix branch with descriptive name (e.g., `update/dependencies-1.3.0`, `fix/validateParameters-null-safety`)
+2. Make changes and commit with clear, contextual messages
+3. Push branch and create PR
+4. After merge: `git checkout master && git pull`
+5. For versioned releases: Delete and reapply tags at new master tip for consistency
+
+### Tag Management After Merges
+```bash
+git tag -d 1.3.0           # Delete local tag
+git push origin :refs/tags/1.3.0   # Delete remote tag
+git tag 1.3.0              # Create new tag at current master
+git push origin 1.3.0      # Push new tag
+```
+
+### Branch Operations
+- Use descriptive branch names that indicate purpose
+- Prefer systematic batch updates for similar changes across repos
+- Verify changes after merging (check CI status, pull master, verify versions)
+
+### Issue Creation for Deferred Work
+- Create issues for non-critical improvements that shouldn't block current work
+- Include: problem description, why it matters, proposed solution, scope, and priority
+- Example: Configuration improvements, technical debt, future optimizations
+
+## Communication and Evidence Standards
+
+### Providing Evidence for Claims
+When making factual claims about code, configurations, or system state:
+- **Cite specific locations**: Include file paths, line numbers, function names
+- **Link to sources**: Provide GitHub permalinks, PR numbers, commit hashes
+- **Show grep/search results**: Display actual output from searches when claiming something exists/doesn't exist
+- **Reference tool outputs**: Include relevant terminal output, CI logs, test results
+
+**Examples:**
+- ❌ "The workflow uses authentication"
+- ✅ "The workflow uses authentication (see line 42 in `.github/workflows/pull-request.yml`)"
+- ❌ "All dependencies are at v1.3.0"
+- ✅ "All dependencies are at v1.3.0 (verified via grep: 23 Kotlin deps + 15 Go deps = 38 total)"
+
+### Presentation Preferences
+- Use tables for comparing data across multiple items/repos
+- Provide systematic verification when checking multiple repositories
+- Use emoji indicators sparingly but effectively (✅ ❌ 🔄 ⚠️)
+
+## Technical Implementation Patterns
+
+### Pattern Consistency
+When implementing fixes or features:
+- Look for existing patterns in other repos before creating new approaches
+- Match authentication/configuration patterns across similar components
+- Example: GO_MODULES_TOKEN with x-access-token prefix (not bare token)
+
+### Version Alignment
+- Maintain consistent versions across entire ecosystem
+- Update dependencies in batches by type (Kotlin/Maven, then Go modules)
+- Verify alignment after updates with grep searches across workspace
+
+### Workspace-Aware Operations
+- Use the multi-root workspace definition as the authoritative repo list
+- Don't search outside `/c/dev` workspace boundaries
+- Loop over known repos rather than broad filesystem searches
+
 ## Development Environment Setup
 
 1. **Prerequisites**: Go 1.25.1+, Docker Desktop, Make, BATS (npm install -g bats)
