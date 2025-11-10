@@ -165,6 +165,13 @@ This workspace file contains all component repositories and is the authoritative
 - **Release process**: `RELEASE.md` in main datadatdat repository
 - **Workspace configuration**: `datadatdat.code-workspace` in `/c/dev` directory
 
+## GitHub Issue Management
+
+When creating GitHub issues with `gh issue create`:
+- **Do NOT use labels** - The `--label` flag should never be used
+- Use clear titles and detailed markdown bodies
+- Link related issues/PRs in the body text when relevant
+
 ## Development Environment Setup
 
 1. **Prerequisites**: Go 1.25.1+, Docker Desktop, Make, BATS (npm install -g bats)
