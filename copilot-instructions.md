@@ -207,12 +207,15 @@ When making factual claims about code, configurations, or system state:
 - **Link to sources**: Provide GitHub permalinks, PR numbers, commit hashes
 - **Show grep/search results**: Display actual output from searches when claiming something exists/doesn't exist
 - **Reference tool outputs**: Include relevant terminal output, CI logs, test results
+- **Never speculate and claim as fact**: Do not say "This is a known issue" or "This is documented behavior" without citing the actual source
 
 **Examples:**
 - ❌ "The workflow uses authentication"
 - ✅ "The workflow uses authentication (see line 42 in `.github/workflows/pull-request.yml`)"
 - ❌ "All dependencies are at v1.3.0"
 - ✅ "All dependencies are at v1.3.0 (verified via grep: 23 Kotlin deps + 15 Go deps = 38 total)"
+- ❌ "This is a known issue - containers sometimes can't resolve each other's DNS names"
+- ✅ "The auth-server logs show DNS lookup failing for 'postgres' with error: dial tcp: lookup postgres on 172.26.0.2:53: no such host"
 
 ### Presentation Preferences
 - Use tables for comparing data across multiple items/repos
