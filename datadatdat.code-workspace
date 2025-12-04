@@ -1,0 +1,136 @@
+{
+    "folders": [
+        {
+            "name": "🎯 datadatdat (CLI)",
+            "path": "datadatdat"
+        },
+        {
+            "name": "🚀 datadatdat-server (Core Server)",
+            "path": "datadatdat-server"
+        },
+        {
+            "name": "👊 datadatdat-remote-server (Remote Web)",
+            "path": "datadatdat-remote-server"
+        },
+        {
+            "name": "👊 datadatdat-remote-go",
+            "path": "datadatdat-remote-go"
+        },
+        {
+            "name": "👊 datadatdat-remote",
+            "path": "datadatdat-remote"
+        },
+        {
+            "name": "📡 datadatdat-client-go (Go Client)",
+            "path": "datadatdat-client-go"
+        },
+        {
+            "name": "🐳 datadatdat-docker-proxy (Docker API)",
+            "path": "datadatdat-docker-proxy"
+        },
+        {
+            "name": "🛠️ remote-sdk-go (Remote SDK - Go)",
+            "path": "remote-sdk-go"
+        },
+        {
+            "name": "🛠️ remote-sdk (Remote SDK - Kotlin)",
+            "path": "remote-sdk"
+        },
+        {
+            "name": "⚙️ command-executor (Command Library)",
+            "path": "command-executor"
+        },
+        {
+            "name": "🔌 plugin-launcher (Plugin Infrastructure)",
+            "path": "plugin-launcher"
+        },
+        {
+            "name": "☁️ s3-remote-go (S3 Remote - Go)",
+            "path": "s3-remote-go"
+        },
+        {
+            "name": "☁️ s3-remote (S3 Remote - Kotlin)",
+            "path": "s3-remote"
+        },
+        {
+            "name": "🔑 ssh-remote-go (SSH Remote - Go)",
+            "path": "ssh-remote-go"
+        },
+        {
+            "name": "🔑 ssh-remote (SSH Remote - Kotlin)",
+            "path": "ssh-remote"
+        },
+        {
+            "name": "🌐 s3web-remote-go (S3 Web Remote - Go)",
+            "path": "s3web-remote-go"
+        },
+        {
+            "name": "🌐 s3web-remote (S3 Web Remote - Kotlin)",
+            "path": "s3web-remote"
+        },
+        {
+            "name": "⚡ nop-remote-go (No-op Remote - Go)",
+            "path": "nop-remote-go"
+        },
+        {
+            "name": "⚡ nop-remote (No-op Remote - Kotlin)",
+            "path": "nop-remote"
+        },
+        {
+            "name": "🏢 delphix-remote (Delphix Integration)",
+            "path": "delphix-remote"
+        },
+        {
+            "name": "🧪 ssh-test-server (SSH Testing)",
+            "path": "ssh-test-server"
+        },
+        {
+            "name": "🐳 localstack (Local AWS Stack)",
+            "path": "localstack"
+        },
+        {
+            "name": "🗄️ dynamodb-local (Local DynamoDB)",
+            "path": "dynamodb-local"
+        },
+        {
+            "name": "🎮 datadatdat-demos (Demo Datasets)",
+            "path": "datadatdat-demos"
+        },
+        {
+            "name": "📋 template (Repository Template)",
+            "path": "template"
+        },
+        {
+            "name": "⚙️ .github (Community Files)",
+            "path": ".github"
+        },
+        {
+            "name": "☁️ community-aws (AWS Resources)",
+            "path": "community-aws"
+        },
+        {
+            "name": "📖 datadatdat.github.io (Documentation)",
+            "path": "datadatdat.github.io"
+        },
+        {
+            "name": "🔨 zfs-builder (ZFS Build Tools)",
+            "path": "zfs-builder"
+        },
+        {
+            "name": "🐧 zfs-linuxkit (LinuxKit Integration)",
+            "path": "zfs-linuxkit"
+        },
+        {
+            "name": "📦 zfs-releases (ZFS Builds)",
+            "path": "zfs-releases"
+        },
+        {
+            "name": "🔎 zfs-experiment (Testing ZFS)",
+            "path": "zfs-experiment"
+        },
+        {
+            "name": "🧪 sample-databases (Sample Databases)",
+            "path": "sample-databases"
+        }
+    ]
+}
