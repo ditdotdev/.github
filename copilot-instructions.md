@@ -1,5 +1,42 @@
 # Datadatdat Data Management Platform - AI Agent Instructions
 
+## Critical Rules
+
+### NEVER Skip Tests
+**Tests must always pass.** Never use `-x test`, `--no-test`, or any mechanism to skip tests when building or committing code. If tests fail:
+1. Investigate and fix the root cause
+2. Tests exist for a reason - they catch real issues
+3. Skipping tests masks problems and degrades code quality
+4. All commits must have passing tests before being pushed
+
+## Diagnosing CI/CD Build Failures
+
+When investigating GitHub Actions or other CI/CD build failures:
+
+1. **Always replicate locally first** - Don't assume errors are transient network issues based solely on log output
+   - Use `gh pr checkout <PR_NUMBER>` to check out the branch locally
+   - Run the exact same commands that failed in CI (check the workflow files in `.github/workflows/`)
+   - This reveals the true root cause vs. misleading network timeouts or infrastructure issues
+
+2. **Common pitfalls to avoid:**
+   - Dismissing errors as "intermittent" without verification
+   - Not checking version compatibility (e.g., Gradle 9.x requires Java 17+)
+   - Missing API changes between versions (e.g., Gradle's component selection API changed in 9.x)
+
+3. **Investigation workflow:**
+   - Use `gh pr view <PR_NUMBER> --json statusCheckRollup` to see failed checks
+   - Use `gh run view <RUN_ID> --log-failed` to get failure logs
+   - Check out the branch and replicate the exact build command
+   - Verify environment requirements (Java version, etc.)
+   - Look for API compatibility issues in dependency upgrades
+
+### Example: Gradle Version Upgrades
+
+When Gradle is upgraded (e.g., 8.x → 9.x):
+- Check Java version compatibility (Gradle 9+ requires Java 17+)
+- Review breaking API changes (component selection, task configuration, etc.)
+- Test locally before assuming CI infrastructure issues
+
 ## Architecture Overview
 
 Datadatdat is a proprietary multi-component data versioning platform with ZFS integration and Docker-based containerization. The ecosystem consists of:
