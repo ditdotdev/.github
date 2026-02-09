@@ -9,6 +9,63 @@
 3. Skipping tests masks problems and degrades code quality
 4. All commits must have passing tests before being pushed
 
+## Working Style Preferences
+
+### Investigation & Problem-Solving Approach
+
+**Deep dive before fixing**: Always investigate root causes thoroughly rather than applying quick fixes:
+- Understand the full chain of dependencies (e.g., Docker Desktop kernel → build environment → artifacts)
+- Examine exact technical details (vermagic strings, symbol versions, directory structures)
+- Trace issues through multiple layers (kernel headers → module builds → S3 artifacts → container runtime)
+
+**Validate everything with evidence**: After each fix, provide concrete validation:
+- Inspect artifacts directly (tar contents, file sizes, timestamps, directory structures)
+- Check actual runtime behavior (Docker logs, module loading, error messages)
+- Reference specific workflow runs, commit hashes, and line numbers
+- Never claim something works without showing evidence
+
+**Systematic verification across repositories**: When checking multi-repo state, use batch commands:
+```bash
+# Update all workspace repos to master
+for d in */; do cd "$d" && git checkout master && git pull && cd ..; done
+
+# Verify version consistency across Go modules
+grep -r "github.com/datadatdat/remote-sdk-go" */go.mod
+```
+
+### Multi-Repository Operations
+
+**Workspace-wide thinking**: Understand that operations often affect 30+ repositories simultaneously:
+- "Update all repos" means all workspace folders in `/c/dev`
+- Track relationships between repositories (SDK → providers → client → CLI → servers)
+- Maintain version alignment across the entire ecosystem
+
+**Structured release process**: Follow multi-phase releases with exact ordering:
+1. **Phase 1**: Go SDKs and automated provider PRs
+2. **Phase 2**: Kotlin SDKs and providers
+3. **Phase 3**: Client libraries
+4. **Phase 4**: CLI tools
+5. **Phase 5**: Server components
+6. **Phase 6**: Remote server with E2E validation
+
+**Preparation before execution**: Before complex operations (releases, major changes):
+- Ensure all repos are on master with latest changes pulled
+- Clean up documentation (remove obsolete instructions)
+- Verify version consistency across dependencies
+- Stage everything correctly before proceeding
+
+### Context and Continuity
+
+**Long sessions with continuous flow**: Work sessions may span multiple related tasks:
+- Maintain context of what's been completed (e.g., "Java 17 upgrade done, ZFS builder fixed")
+- Don't revisit or re-investigate already-solved problems
+- Build on previous work in the session (fixes → validation → cleanup → release prep)
+
+**Clean slate for major work**: Before releases or significant changes:
+- Workspace in known-good state (all repos on master)
+- Documentation hygiene (obsolete commands removed)
+- Validation complete (tests passing, artifacts verified)
+
 ## Diagnosing CI/CD Build Failures
 
 When investigating GitHub Actions or other CI/CD build failures:
