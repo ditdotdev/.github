@@ -158,7 +158,7 @@ Both implement the `remote-sdk` interface for push/pull operations to external s
 
 ### Project Structure
 - Each component has identical files: `CODEOWNERS`, `DEVELOPING.md`, `LICENSE`
-- Go projects use `go.mod` with version `go 1.25.1`
+- Go projects use `go.mod` with version `go 1.26.2`
 - Kotlin projects use `build.gradle.kts` with dependency update plugins
 - All repos follow semantic versioning with `v0.x.x` tags
 
@@ -336,7 +336,7 @@ When implementing fixes or features:
 
 ## Development Environment Setup
 
-1. **Prerequisites**: Go 1.25.1+, Docker Desktop, Make, BATS (npm install -g bats)
+1. **Prerequisites**: Go 1.26.2+, Docker Desktop, Make, BATS (npm install -g bats)
 2. **Windows only**: Run ZFS pool setup script first
 3. **AWS testing**: Configure `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`
 4. **SSH testing**: Generate SSH keypair using provided scripts
