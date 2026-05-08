@@ -117,16 +117,8 @@
             "path": "zfs-builder"
         },
         {
-            "name": "🐧 zfs-linuxkit (LinuxKit Integration)",
-            "path": "zfs-linuxkit"
-        },
-        {
             "name": "📦 zfs-releases (ZFS Builds)",
             "path": "zfs-releases"
-        },
-        {
-            "name": "🔎 zfs-experiment (Testing ZFS)",
-            "path": "zfs-experiment"
         },
         {
             "name": "🧪 sample-databases (Sample Databases)",
