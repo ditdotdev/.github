@@ -100,10 +100,15 @@ jobs:
           test_end=$(date +%s)
           echo $((test_end - test_start)) > .health/test-time.txt
           if [ -s .health/coverage.out ]; then
-            go tool cover -func=.health/coverage.out | tail -1 | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
+            go tool cover -func=.health/coverage.out > .health/coverage-by-func.txt
+            tail -1 .health/coverage-by-func.txt | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
+            # Per-package summary (each package's coverage % from `go test` output line)
+            grep -E '^(ok|FAIL|---)\s+github' .health/test.log > .health/coverage-by-pkg.txt 2>/dev/null || true
           else
             echo "0" > .health/coverage.txt
           fi
+          # Also dump the test.log so summary can show what packages ran/skipped
+          cp .health/test.log .health/test-output.txt 2>/dev/null || true
 
       - name: Measure - build time
         if: inputs.language == 'go'
@@ -237,6 +242,23 @@ jobs:
             echo "| Dependencies | ${score_deps}/5 | 20% | ${outdated} direct deps outdated, ${vuln_count} vulns, ${replace_count} replace directives |"
             echo "| Hygiene | ${score_hygiene}/5 | 10% | ${todos} TODO/FIXME across ${loc} LOC (${todo_density} per kLOC) |"
             echo ""
+            if [ -s .health/coverage-by-pkg.txt ] || [ -s .health/test-output.txt ]; then
+              echo "<details><summary>Coverage breakdown by package</summary>"
+              echo ""
+              echo '```'
+              if [ -s .health/coverage-by-pkg.txt ]; then
+                cat .health/coverage-by-pkg.txt
+              fi
+              # Also list packages with no test files (often the real coverage drag)
+              if [ -s .health/test-output.txt ]; then
+                echo ""
+                echo "# Packages with [no test files]:"
+                grep '\[no test files\]' .health/test-output.txt || echo "  (none)"
+              fi
+              echo '```'
+              echo "</details>"
+              echo ""
+            fi
             echo "<details><summary>Scoring rubric</summary>"
             echo ""
             echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
