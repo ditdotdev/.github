@@ -268,6 +268,28 @@ jobs:
               echo "</details>"
               echo ""
             fi
+            if [ -s .health/coverage-by-func.txt ]; then
+              echo "<details><summary>Coverage by function</summary>"
+              echo ""
+              echo '```'
+              cat .health/coverage-by-func.txt
+              echo '```'
+              echo "</details>"
+              echo ""
+              # Diagnostic: count statements per package in the profile to find drag
+              echo "<details><summary>Statements per file in the coverage profile</summary>"
+              echo ""
+              echo '```'
+              # Each line in coverage.out (after 'mode:' header) is: file:start,end numStmts count
+              if [ -s .health/coverage.out ]; then
+                tail -n +2 .health/coverage.out \
+                  | awk '{ split($1, a, ":"); file=a[1]; n=$2; total[file]+=n; if($3>0) covered[file]+=n; } END { for (f in total) printf "%6d / %6d  (%5.1f%%)  %s\n", covered[f]+0, total[f], (covered[f]+0)/total[f]*100, f }' \
+                  | sort -k7
+              fi
+              echo '```'
+              echo "</details>"
+              echo ""
+            fi
             echo "<details><summary>Scoring rubric</summary>"
             echo ""
             echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
