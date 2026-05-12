@@ -118,20 +118,36 @@ jobs:
         if: inputs.language == 'go'
         continue-on-error: true
         run: |
-          if govulncheck ./... > .health/vuln.txt 2>&1; then
-            echo "0" > .health/vuln-count.txt
-          else
-            # govulncheck exits non-zero when vulns found; count "Vulnerability" entries
-            count=$(grep -c "^Vulnerability" .health/vuln.txt 2>/dev/null || echo "0")
-            [ "$count" = "0" ] && count=1
-            echo "$count" > .health/vuln-count.txt
-          fi
+          # govulncheck exit codes: 0=no findings, 3=vulnerabilities found, other=tool error
+          govulncheck ./... > .health/vuln.txt 2>&1
+          gv_exit=$?
+          case "$gv_exit" in
+            0)
+              echo "0" > .health/vuln-count.txt
+              ;;
+            3)
+              count=$(grep -c "^Vulnerability" .health/vuln.txt || echo "0")
+              # Defensive: exit 3 means findings exist; if grep missed them, count at least 1
+              [ "$count" = "0" ] && count=1
+              echo "$count" > .health/vuln-count.txt
+              ;;
+            *)
+              echo "0" > .health/vuln-count.txt
+              echo "::warning::govulncheck exited $gv_exit (tool error, scoring as 0 vulns). First 50 lines of output:"
+              head -50 .health/vuln.txt
+              ;;
+          esac
 
       - name: Measure - dependency health
         if: inputs.language == 'go'
         continue-on-error: true
         run: |
-          go list -u -m all 2>/dev/null | grep -c '\[' > .health/outdated.txt || echo "0" > .health/outdated.txt
+          # Count outdated DIRECT dependencies only (excludes // indirect entries
+          # which dependabot does not open PRs for — they're updated transitively
+          # when their direct parent is bumped).
+          go list -u -m -json all 2>/dev/null \
+            | jq -s '[.[] | select(.Indirect != true and .Update != null and .Main != true)] | length' \
+            > .health/outdated.txt 2>/dev/null || echo "0" > .health/outdated.txt
           grep -c "^replace" go.mod > .health/replace.txt 2>/dev/null || echo "0" > .health/replace.txt
           loc=$(find . -name '*.go' -not -path './vendor/*' -not -path './.health/*' -print0 2>/dev/null | xargs -0 wc -l 2>/dev/null | tail -1 | awk '{print $1}')
           echo "${loc:-0}" > .health/loc.txt
@@ -218,7 +234,7 @@ jobs:
             echo "| Code Quality | ${score_quality}/5 | 25% | ${lint_count} lint issues, ${cyclo_count} funcs over cyclomatic ${max_cyclo} |"
             echo "| Test Coverage | ${score_coverage}/5 | 25% | ${coverage}% line coverage (floor: ${coverage_floor}%) |"
             echo "| Build Efficiency | ${score_build}/5 | 20% | build ${build_time}s, tests ${test_time}s |"
-            echo "| Dependencies | ${score_deps}/5 | 20% | ${outdated} outdated, ${vuln_count} vulns, ${replace_count} replace directives |"
+            echo "| Dependencies | ${score_deps}/5 | 20% | ${outdated} direct deps outdated, ${vuln_count} vulns, ${replace_count} replace directives |"
             echo "| Hygiene | ${score_hygiene}/5 | 10% | ${todos} TODO/FIXME across ${loc} LOC (${todo_density} per kLOC) |"
             echo ""
             echo "<details><summary>Scoring rubric</summary>"
@@ -226,7 +242,7 @@ jobs:
             echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
             echo "- **Coverage** — 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
             echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s."
-            echo "- **Deps** — 5: 0 vulns, 0 replace directives, ≤2 outdated. 1: any vuln OR any replace directive in master."
+            echo "- **Deps** — measures DIRECT deps only (transitive deps are bumped via parents by \`go mod tidy\`). 5: 0 vulns, 0 replace directives, ≤2 direct outdated. 1: any vuln OR any replace directive in master."
             echo "- **Hygiene** — TODO/FIXME density per kLOC. 5: ≤1. 1: >20."
             echo ""
             echo "Weights: Quality 25%, Coverage 25%, Build 20%, Deps 20%, Hygiene 10%."
