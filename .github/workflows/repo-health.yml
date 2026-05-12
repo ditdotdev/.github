@@ -108,6 +108,20 @@ jobs:
           go test -race -coverprofile=.health/coverage.out -covermode=atomic ./... > .health/test.log 2>&1 || true
           test_end=$(date +%s)
           echo $((test_end - test_start)) > .health/test-time.txt
+
+          # If pre-test built helper binaries with `go build -cover` and
+          # exported GOCOVERDIR, those binaries emit subprocess coverage
+          # data when they exit. Merge it into the main profile so functions
+          # like plugin Serve() and cmd/X/main.go get real coverage signal
+          # instead of showing as 0% (Go 1.20+).
+          if [ -n "${GOCOVERDIR:-}" ] && [ -d "$GOCOVERDIR" ] && [ -n "$(ls -A "$GOCOVERDIR" 2>/dev/null)" ]; then
+            go tool covdata textfmt -i="$GOCOVERDIR" -o=.health/coverage-subproc.out 2>/dev/null || true
+            if [ -s .health/coverage-subproc.out ] && [ -s .health/coverage.out ]; then
+              { cat .health/coverage.out; tail -n +2 .health/coverage-subproc.out; } > .health/coverage-merged.out
+              mv .health/coverage-merged.out .health/coverage.out
+            fi
+          fi
+
           if [ -s .health/coverage.out ]; then
             # Raw (unfiltered) coverage — for transparency in the summary
             go tool cover -func=.health/coverage.out > .health/coverage-by-func.txt
