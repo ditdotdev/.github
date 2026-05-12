@@ -22,6 +22,11 @@ on:
         required: false
         type: string
         default: warn
+      pre-test:
+        description: 'Optional bash snippet run before `go test` (e.g., to build test fixtures)'
+        required: false
+        type: string
+        default: ''
     secrets:
       GO_MODULES_TOKEN:
         required: false
@@ -90,6 +95,10 @@ jobs:
         run: |
           gocyclo -over ${{ inputs.max-cyclomatic }} . > .health/gocyclo.txt 2>/dev/null || true
           wc -l < .health/gocyclo.txt | tr -d ' ' > .health/gocyclo-count.txt
+
+      - name: Pre-test setup (caller-provided)
+        if: inputs.language == 'go' && inputs.pre-test != ''
+        run: ${{ inputs.pre-test }}
 
       - name: Measure - tests + coverage
         if: inputs.language == 'go'
