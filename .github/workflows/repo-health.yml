@@ -109,14 +109,45 @@ jobs:
           test_end=$(date +%s)
           echo $((test_end - test_start)) > .health/test-time.txt
           if [ -s .health/coverage.out ]; then
+            # Raw (unfiltered) coverage — for transparency in the summary
             go tool cover -func=.health/coverage.out > .health/coverage-by-func.txt
-            tail -1 .health/coverage-by-func.txt | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
-            # Per-package summary (each package's coverage % from `go test` output line)
+            tail -1 .health/coverage-by-func.txt | awk '{print $3}' | sed 's/%//' > .health/coverage-raw.txt
+
+            # Filter generated/non-library code from the profile before scoring.
+            # Standard practice (codecov, Kubernetes, gRPC-go, aws-sdk-go-v2 all do this).
+            # Excludes:
+            #   *.pb.go              protobuf generated
+            #   *_gen.go             code generation suffix
+            #   *_generated.go       code generation suffix
+            #   mock_*.go            mock files
+            #   /cmd/X/main.go       binary entry points (not library code)
+            #   anything containing "// Code generated ... DO NOT EDIT." marker
+            generated_paths=$(grep -lE '^// Code generated .* DO NOT EDIT\.$' \
+              $(find . -type f -name '*.go' -not -path './vendor/*' -not -path './.health/*') \
+              2>/dev/null | sed 's|^\./||' | tr '\n' '|' | sed 's/|$//')
+            exclude_re='(\.pb\.go|_gen\.go|_generated\.go|mock_[^/]+\.go|/cmd/[^/]+/main\.go):'
+            if [ -n "$generated_paths" ]; then
+              exclude_re="(${generated_paths}|${exclude_re#(}"
+            fi
+            {
+              head -1 .health/coverage.out
+              tail -n +2 .health/coverage.out | grep -vE "$exclude_re" || true
+            } > .health/coverage-filtered.out
+
+            # Scored coverage = filtered profile
+            if [ "$(wc -l < .health/coverage-filtered.out)" -gt 1 ]; then
+              go tool cover -func=.health/coverage-filtered.out | tail -1 | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
+            else
+              cp .health/coverage-raw.txt .health/coverage.txt
+            fi
+
+            # Per-package summary (from go test output)
             grep -E '^(ok|FAIL|---)\s+github' .health/test.log > .health/coverage-by-pkg.txt 2>/dev/null || true
           else
             echo "0" > .health/coverage.txt
+            echo "0" > .health/coverage-raw.txt
           fi
-          # Also dump the test.log so summary can show what packages ran/skipped
+          # Dump test.log for summary visibility
           cp .health/test.log .health/test-output.txt 2>/dev/null || true
 
       - name: Measure - build time
@@ -177,6 +208,7 @@ jobs:
           lint_count=$(read_int .health/lint-count.txt)
           cyclo_count=$(read_int .health/gocyclo-count.txt)
           coverage=$(read_int .health/coverage.txt)
+          coverage_raw=$(read_int .health/coverage-raw.txt)
           coverage_int=${coverage%.*}
           coverage_int=${coverage_int:-0}
           test_time=$(read_int .health/test-time.txt)
@@ -246,7 +278,7 @@ jobs:
             echo "| Category | Score | Weight | Measured |"
             echo "|---|---|---|---|"
             echo "| Code Quality | ${score_quality}/5 | 25% | ${lint_count} lint issues, ${cyclo_count} funcs over cyclomatic ${max_cyclo} |"
-            echo "| Test Coverage | ${score_coverage}/5 | 25% | ${coverage}% line coverage (floor: ${coverage_floor}%) |"
+            echo "| Test Coverage | ${score_coverage}/5 | 25% | ${coverage}% on handwritten code (raw incl. generated: ${coverage_raw}%, floor: ${coverage_floor}%) |"
             echo "| Build Efficiency | ${score_build}/5 | 20% | build ${build_time}s, tests ${test_time}s |"
             echo "| Dependencies | ${score_deps}/5 | 20% | ${outdated} direct deps outdated, ${vuln_count} vulns, ${replace_count} replace directives |"
             echo "| Hygiene | ${score_hygiene}/5 | 10% | ${todos} TODO/FIXME across ${loc} LOC (${todo_density} per kLOC) |"
@@ -293,7 +325,7 @@ jobs:
             echo "<details><summary>Scoring rubric</summary>"
             echo ""
             echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
-            echo "- **Coverage** — 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
+            echo "- **Coverage** — measured on handwritten code only (excludes \`*.pb.go\`, \`*_gen.go\`, \`*_generated.go\`, \`mock_*.go\`, \`/cmd/X/main.go\`, and any file marked \`// Code generated ... DO NOT EDIT.\`). 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
             echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s."
             echo "- **Deps** — measures DIRECT deps only (transitive deps are bumped via parents by \`go mod tidy\`). 5: 0 vulns, 0 replace directives, ≤2 direct outdated. 1: any vuln OR any replace directive in master."
             echo "- **Hygiene** — TODO/FIXME density per kLOC. 5: ≤1. 1: >20."
