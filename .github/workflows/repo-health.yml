@@ -1,0 +1,407 @@
+name: Repo Health
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: 'Language: go (kotlin coming later)'
+        required: true
+        type: string
+      coverage-floor:
+        description: 'Minimum line coverage % (informational floor in summary)'
+        required: false
+        type: number
+        default: 70
+      max-cyclomatic:
+        description: 'Cyclomatic complexity threshold per function'
+        required: false
+        type: number
+        default: 25
+      mode:
+        description: 'warn | block — block fails the job when any category < 3'
+        required: false
+        type: string
+        default: warn
+      pre-test:
+        description: 'Optional bash snippet run before `go test` (e.g., to build test fixtures)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      GO_MODULES_TOKEN:
+        required: false
+
+jobs:
+  health:
+    name: Repo Health
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        if: inputs.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Configure Git for private modules
+        if: inputs.language == 'go'
+        env:
+          GO_MODULES_TOKEN: ${{ secrets.GO_MODULES_TOKEN }}
+        run: |
+          if [ -n "${GO_MODULES_TOKEN:-}" ]; then
+            git config --global url."https://x-access-token:${GO_MODULES_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
+
+      - name: Configure Go env
+        if: inputs.language == 'go'
+        run: |
+          go env -w GOPRIVATE=github.com/datadatdat/*
+          go env -w GONOPROXY=github.com/datadatdat/*
+          go env -w GONOSUMDB=github.com/datadatdat/*
+          go env -w GOPROXY=https://proxy.golang.org,direct
+
+      - name: Install measurement tools
+        if: inputs.language == 'go'
+        run: |
+          go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Download deps
+        if: inputs.language == 'go'
+        run: go mod download
+
+      - name: Prepare workspace
+        run: mkdir -p .health
+
+      - name: Measure - lint
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          golangci-lint run --timeout=5m ./... > .health/lint.txt 2>&1 || true
+          # Count issue lines (format: file.go:line:col: message)
+          grep -cE '\.go:[0-9]+:[0-9]+:' .health/lint.txt > .health/lint-count.txt 2>/dev/null || echo "0" > .health/lint-count.txt
+
+      - name: Measure - cyclomatic complexity
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          gocyclo -over ${{ inputs.max-cyclomatic }} . > .health/gocyclo.txt 2>/dev/null || true
+          wc -l < .health/gocyclo.txt | tr -d ' ' > .health/gocyclo-count.txt
+
+      - name: Pre-test setup (caller-provided)
+        if: inputs.language == 'go' && inputs.pre-test != ''
+        run: ${{ inputs.pre-test }}
+
+      - name: Measure - tests + coverage
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          test_start=$(date +%s)
+          go test -race -coverprofile=.health/coverage.out -covermode=atomic ./... > .health/test.log 2>&1 || true
+          test_end=$(date +%s)
+          echo $((test_end - test_start)) > .health/test-time.txt
+
+          # If pre-test built helper binaries with `go build -cover` and
+          # exported GOCOVERDIR, those binaries emit subprocess coverage
+          # data when they exit. Merge it into the main profile so functions
+          # like plugin Serve() and cmd/X/main.go get real coverage signal
+          # instead of showing as 0% (Go 1.20+).
+          echo "::group::Subprocess coverage merge diagnostics"
+          echo "GOCOVERDIR=${GOCOVERDIR:-<unset>}"
+          if [ -n "${GOCOVERDIR:-}" ]; then
+            echo "Directory exists: $([ -d "$GOCOVERDIR" ] && echo yes || echo no)"
+            echo "Contents of GOCOVERDIR:"
+            ls -la "$GOCOVERDIR" 2>&1 || echo "(cannot list)"
+          fi
+          if [ -n "${GOCOVERDIR:-}" ] && [ -d "$GOCOVERDIR" ] && [ -n "$(ls -A "$GOCOVERDIR" 2>/dev/null)" ]; then
+            echo "Running covdata textfmt..."
+            go tool covdata textfmt -i="$GOCOVERDIR" -o=.health/coverage-subproc.out
+            echo "Subproc profile size: $(wc -l < .health/coverage-subproc.out 2>/dev/null || echo 0) lines"
+            if [ -s .health/coverage-subproc.out ] && [ -s .health/coverage.out ]; then
+              { cat .health/coverage.out; tail -n +2 .health/coverage-subproc.out; } > .health/coverage-merged.out
+              mv .health/coverage-merged.out .health/coverage.out
+              echo "Merged profile size: $(wc -l < .health/coverage.out) lines"
+            else
+              echo "Skipping merge: subproc empty or main profile empty"
+            fi
+          else
+            echo "Skipping subprocess coverage merge (GOCOVERDIR unset/empty)"
+          fi
+          echo "::endgroup::"
+
+          if [ -s .health/coverage.out ]; then
+            # Raw (unfiltered) coverage — for transparency in the summary
+            go tool cover -func=.health/coverage.out > .health/coverage-by-func.txt
+            tail -1 .health/coverage-by-func.txt | awk '{print $3}' | sed 's/%//' > .health/coverage-raw.txt
+
+            # Filter generated/non-library code from the profile before scoring.
+            # Standard practice (codecov, Kubernetes, gRPC-go, aws-sdk-go-v2 all do this).
+            # Excludes:
+            #   *.pb.go              protobuf generated
+            #   *_gen.go             code generation suffix
+            #   *_generated.go       code generation suffix
+            #   mock_*.go            mock files
+            #   /cmd/X/main.go       binary entry points (not library code)
+            #   anything containing "// Code generated ... DO NOT EDIT." marker
+            generated_paths=$(grep -lE '^// Code generated .* DO NOT EDIT\.$' \
+              $(find . -type f -name '*.go' -not -path './vendor/*' -not -path './.health/*') \
+              2>/dev/null | sed 's|^\./||' | tr '\n' '|' | sed 's/|$//')
+            exclude_re='(\.pb\.go|_gen\.go|_generated\.go|mock_[^/]+\.go|/cmd/[^/]+/main\.go):'
+            if [ -n "$generated_paths" ]; then
+              exclude_re="(${generated_paths}|${exclude_re#(}"
+            fi
+            {
+              head -1 .health/coverage.out
+              tail -n +2 .health/coverage.out | grep -vE "$exclude_re" || true
+            } > .health/coverage-filtered.out
+
+            # Scored coverage = filtered profile
+            if [ "$(wc -l < .health/coverage-filtered.out)" -gt 1 ]; then
+              go tool cover -func=.health/coverage-filtered.out | tail -1 | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
+            else
+              cp .health/coverage-raw.txt .health/coverage.txt
+            fi
+
+            # Per-package summary (from go test output)
+            grep -E '^(ok|FAIL|---)\s+github' .health/test.log > .health/coverage-by-pkg.txt 2>/dev/null || true
+          else
+            echo "0" > .health/coverage.txt
+            echo "0" > .health/coverage-raw.txt
+          fi
+          # Dump test.log for summary visibility
+          cp .health/test.log .health/test-output.txt 2>/dev/null || true
+
+      - name: Measure - build time
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          build_start=$(date +%s)
+          go build ./... > .health/build.log 2>&1 || true
+          build_end=$(date +%s)
+          echo $((build_end - build_start)) > .health/build-time.txt
+
+      - name: Measure - vulnerability scan
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          # govulncheck exit codes: 0=no findings, 3=vulnerabilities found, other=tool error
+          govulncheck ./... > .health/vuln.txt 2>&1
+          gv_exit=$?
+          case "$gv_exit" in
+            0)
+              echo "0" > .health/vuln-count.txt
+              ;;
+            3)
+              count=$(grep -c "^Vulnerability" .health/vuln.txt || echo "0")
+              # Defensive: exit 3 means findings exist; if grep missed them, count at least 1
+              [ "$count" = "0" ] && count=1
+              echo "$count" > .health/vuln-count.txt
+              ;;
+            *)
+              echo "0" > .health/vuln-count.txt
+              echo "::warning::govulncheck exited $gv_exit (tool error, scoring as 0 vulns). First 50 lines of output:"
+              head -50 .health/vuln.txt
+              ;;
+          esac
+
+      - name: Measure - dependency health
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          # Count outdated DIRECT dependencies only (excludes // indirect entries
+          # which dependabot does not open PRs for — they're updated transitively
+          # when their direct parent is bumped).
+          go list -u -m -json all 2>/dev/null \
+            | jq -s '[.[] | select(.Indirect != true and .Update != null and .Main != true)] | length' \
+            > .health/outdated.txt 2>/dev/null || echo "0" > .health/outdated.txt
+          grep -c "^replace" go.mod > .health/replace.txt 2>/dev/null || echo "0" > .health/replace.txt
+          loc=$(find . -name '*.go' -not -path './vendor/*' -not -path './.health/*' -print0 2>/dev/null | xargs -0 wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+          echo "${loc:-0}" > .health/loc.txt
+          todos=$(grep -rE "TODO|FIXME" --include='*.go' . 2>/dev/null | grep -v '^./.health/' | wc -l)
+          echo "${todos:-0}" > .health/todos.txt
+
+      - name: Compute scores
+        id: score
+        run: |
+          set -euo pipefail
+          read_int() { local v=0; [ -f "$1" ] && v=$(tr -d '[:space:]' < "$1" 2>/dev/null); echo "${v:-0}"; }
+
+          lint_count=$(read_int .health/lint-count.txt)
+          cyclo_count=$(read_int .health/gocyclo-count.txt)
+          coverage=$(read_int .health/coverage.txt)
+          coverage_raw=$(read_int .health/coverage-raw.txt)
+          coverage_int=${coverage%.*}
+          coverage_int=${coverage_int:-0}
+          test_time=$(read_int .health/test-time.txt)
+          build_time=$(read_int .health/build-time.txt)
+          vuln_count=$(read_int .health/vuln-count.txt)
+          outdated=$(read_int .health/outdated.txt)
+          replace_count=$(read_int .health/replace.txt)
+          loc=$(read_int .health/loc.txt)
+          todos=$(read_int .health/todos.txt)
+          if [ "$loc" -gt 0 ]; then
+            todo_density=$(( todos * 1000 / loc ))
+          else
+            todo_density=0
+          fi
+
+          # Code Quality: lint issues + over-cyclomatic functions
+          if   [ "$lint_count" -gt 50 ] || [ "$cyclo_count" -gt 10 ]; then score_quality=1
+          elif [ "$lint_count" -gt 20 ] || [ "$cyclo_count" -gt 5 ];  then score_quality=2
+          elif [ "$lint_count" -gt 5 ]  || [ "$cyclo_count" -gt 2 ];  then score_quality=3
+          elif [ "$lint_count" -gt 0 ]  || [ "$cyclo_count" -gt 0 ];  then score_quality=4
+          else                                                              score_quality=5
+          fi
+
+          # Coverage
+          if   [ "$coverage_int" -ge 85 ]; then score_coverage=5
+          elif [ "$coverage_int" -ge 75 ]; then score_coverage=4
+          elif [ "$coverage_int" -ge 65 ]; then score_coverage=3
+          elif [ "$coverage_int" -ge 50 ]; then score_coverage=2
+          else                                  score_coverage=1
+          fi
+
+          # Build efficiency
+          if   [ "$build_time" -gt 240 ] || [ "$test_time" -gt 480 ]; then score_build=1
+          elif [ "$build_time" -gt 120 ] || [ "$test_time" -gt 240 ]; then score_build=2
+          elif [ "$build_time" -gt 60 ]  || [ "$test_time" -gt 120 ]; then score_build=3
+          elif [ "$build_time" -gt 30 ]  || [ "$test_time" -gt 60 ];  then score_build=4
+          else                                                              score_build=5
+          fi
+
+          # Dependencies (any vuln or replace directive auto-floors to 1)
+          if   [ "$vuln_count" -gt 0 ] || [ "$replace_count" -gt 0 ]; then score_deps=1
+          elif [ "$outdated" -gt 10 ];                                then score_deps=2
+          elif [ "$outdated" -gt 5 ];                                 then score_deps=3
+          elif [ "$outdated" -gt 2 ];                                 then score_deps=4
+          else                                                              score_deps=5
+          fi
+
+          # Hygiene (TODO/FIXME density per kLOC)
+          if   [ "$todo_density" -gt 20 ]; then score_hygiene=1
+          elif [ "$todo_density" -gt 10 ]; then score_hygiene=2
+          elif [ "$todo_density" -gt 5 ];  then score_hygiene=3
+          elif [ "$todo_density" -gt 1 ];  then score_hygiene=4
+          else                                  score_hygiene=5
+          fi
+
+          total=$(awk "BEGIN { printf \"%.2f\", ($score_quality*0.25 + $score_coverage*0.25 + $score_build*0.20 + $score_deps*0.20 + $score_hygiene*0.10) }")
+
+          coverage_floor='${{ inputs.coverage-floor }}'
+          max_cyclo='${{ inputs.max-cyclomatic }}'
+          mode='${{ inputs.mode }}'
+
+          {
+            echo "## Repo Health Report"
+            echo ""
+            echo "**Total Score: ${total} / 5.00**  &nbsp;&nbsp; mode: \`${mode}\`"
+            echo ""
+            echo "| Category | Score | Weight | Measured |"
+            echo "|---|---|---|---|"
+            echo "| Code Quality | ${score_quality}/5 | 25% | ${lint_count} lint issues, ${cyclo_count} funcs over cyclomatic ${max_cyclo} |"
+            echo "| Test Coverage | ${score_coverage}/5 | 25% | ${coverage}% on handwritten code (raw incl. generated: ${coverage_raw}%, floor: ${coverage_floor}%) |"
+            echo "| Build Efficiency | ${score_build}/5 | 20% | build ${build_time}s, tests ${test_time}s |"
+            echo "| Dependencies | ${score_deps}/5 | 20% | ${outdated} direct deps outdated, ${vuln_count} vulns, ${replace_count} replace directives |"
+            echo "| Hygiene | ${score_hygiene}/5 | 10% | ${todos} TODO/FIXME across ${loc} LOC (${todo_density} per kLOC) |"
+            echo ""
+            if [ -s .health/coverage-by-pkg.txt ] || [ -s .health/test-output.txt ]; then
+              echo "<details><summary>Coverage breakdown by package</summary>"
+              echo ""
+              echo '```'
+              if [ -s .health/coverage-by-pkg.txt ]; then
+                cat .health/coverage-by-pkg.txt
+              fi
+              # Also list packages with no test files (often the real coverage drag)
+              if [ -s .health/test-output.txt ]; then
+                echo ""
+                echo "# Packages with [no test files]:"
+                grep '\[no test files\]' .health/test-output.txt || echo "  (none)"
+              fi
+              echo '```'
+              echo "</details>"
+              echo ""
+            fi
+            if [ -s .health/coverage-by-func.txt ]; then
+              echo "<details><summary>Coverage by function</summary>"
+              echo ""
+              echo '```'
+              cat .health/coverage-by-func.txt
+              echo '```'
+              echo "</details>"
+              echo ""
+              # Diagnostic: count statements per package in the profile to find drag
+              echo "<details><summary>Statements per file in the coverage profile</summary>"
+              echo ""
+              echo '```'
+              # Each line in coverage.out (after 'mode:' header) is: file:start,end numStmts count
+              if [ -s .health/coverage.out ]; then
+                tail -n +2 .health/coverage.out \
+                  | awk '{ split($1, a, ":"); file=a[1]; n=$2; total[file]+=n; if($3>0) covered[file]+=n; } END { for (f in total) printf "%6d / %6d  (%5.1f%%)  %s\n", covered[f]+0, total[f], (covered[f]+0)/total[f]*100, f }' \
+                  | sort -k7
+              fi
+              echo '```'
+              echo "</details>"
+              echo ""
+            fi
+            echo "<details><summary>Scoring rubric</summary>"
+            echo ""
+            echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
+            echo "- **Coverage** — measured on handwritten code only (excludes \`*.pb.go\`, \`*_gen.go\`, \`*_generated.go\`, \`mock_*.go\`, \`/cmd/X/main.go\`, and any file marked \`// Code generated ... DO NOT EDIT.\`). 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
+            echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s."
+            echo "- **Deps** — measures DIRECT deps only (transitive deps are bumped via parents by \`go mod tidy\`). 5: 0 vulns, 0 replace directives, ≤2 direct outdated. 1: any vuln OR any replace directive in master."
+            echo "- **Hygiene** — TODO/FIXME density per kLOC. 5: ≤1. 1: >20."
+            echo ""
+            echo "Weights: Quality 25%, Coverage 25%, Build 20%, Deps 20%, Hygiene 10%."
+            echo "</details>"
+          } > .health/summary.md
+
+          cat .health/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+          # Block mode: fail if any category < 3
+          if [ "$mode" = "block" ]; then
+            for s in $score_quality $score_coverage $score_build $score_deps $score_hygiene; do
+              if [ "$s" -lt 3 ]; then
+                echo "::error::Health check failed (mode=block): one or more categories scored below 3."
+                exit 1
+              fi
+            done
+          fi
+
+      - name: Post sticky PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('.health/summary.md', 'utf8');
+            const marker = '<!-- repo-health-comment -->';
+            const body = marker + '\n' + summary;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => (c.body || '').includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
