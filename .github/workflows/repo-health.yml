@@ -257,21 +257,35 @@ jobs:
           test_end=$(date +%s)
           echo $((test_end - test_start)) > .health/test-time.txt
 
-          # Walk every jacoco XML report (handles multi-module repos like delphix-remote)
-          # and aggregate LINE counters. XML structure:
+          # Walk every jacoco report (handles multi-module repos like delphix-remote) and aggregate
+          # LINE counters. Try XML first (richest format), then CSV (more commonly enabled by default).
+          # XML structure:
           #   <report ...><counter type="LINE" missed="X" covered="Y"/></report>
+          # CSV columns (header row first): GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,
+          # BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,...
           total_missed=0
           total_covered=0
           found_report=false
+
+          # XML pass.
           while IFS= read -r -d '' xml; do
             found_report=true
-            # Top-level <counter type="LINE"> appears at the report root; sum across modules.
             line=$(grep -oE '<counter[^/]*type="LINE"[^/]*/>' "$xml" | tail -1)
             missed=$(echo "$line" | grep -oE 'missed="[0-9]+"' | grep -oE '[0-9]+' || echo "0")
             covered=$(echo "$line" | grep -oE 'covered="[0-9]+"' | grep -oE '[0-9]+' || echo "0")
             total_missed=$((total_missed + ${missed:-0}))
             total_covered=$((total_covered + ${covered:-0}))
           done < <(find . -path '*/build/reports/jacoco/*Report*/*.xml' -print0 2>/dev/null)
+
+          # CSV fallback — only if XML pass found nothing. Sum LINE_MISSED (col 8) and LINE_COVERED (col 9).
+          if ! $found_report; then
+            while IFS= read -r -d '' csv; do
+              found_report=true
+              read sum_missed sum_covered < <(awk -F',' 'NR > 1 { m += $8; c += $9 } END { print m+0, c+0 }' "$csv")
+              total_missed=$((total_missed + ${sum_missed:-0}))
+              total_covered=$((total_covered + ${sum_covered:-0}))
+            done < <(find . -path '*/build/reports/jacoco/*Report*/*.csv' -print0 2>/dev/null)
+          fi
 
           if $found_report && [ "$((total_missed + total_covered))" -gt 0 ]; then
             pct=$(awk -v c="$total_covered" -v m="$total_missed" 'BEGIN { printf "%.1f", (c * 100) / (c + m) }')
@@ -281,7 +295,7 @@ jobs:
           else
             echo "0" > .health/coverage.txt
             echo "0" > .health/coverage-raw.txt
-            echo "No jacoco XML report found. Wire 'plugins { id(\"jacoco\") }' + 'tasks.test { finalizedBy(tasks.jacocoTestReport) }' in build.gradle.kts to enable coverage reporting." > .health/coverage-by-pkg.txt
+            echo "No jacoco report found. Wire 'plugins { id(\"jacoco\") }' + 'tasks.test { finalizedBy(tasks.jacocoTestReport) }' in build.gradle.kts to enable coverage reporting. Either CSV or XML output is sufficient." > .health/coverage-by-pkg.txt
           fi
           cp .health/test.log .health/test-output.txt 2>/dev/null || true
 
