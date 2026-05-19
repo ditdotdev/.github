@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       language:
-        description: 'Language: go (kotlin coming later)'
+        description: 'Language: go | kotlin'
         required: true
         type: string
       coverage-floor:
@@ -78,6 +78,31 @@ jobs:
         if: inputs.language == 'go'
         run: go mod download
 
+      # ---- Kotlin setup -------------------------------------------------
+      # Mirrors the Go setup block above for Gradle/Kotlin projects.
+
+      - name: Setup Java
+        if: inputs.language == 'kotlin'
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        if: inputs.language == 'kotlin'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Configure Git for private modules (Kotlin)
+        if: inputs.language == 'kotlin'
+        env:
+          GO_MODULES_TOKEN: ${{ secrets.GO_MODULES_TOKEN }}
+        run: |
+          # Kotlin projects often resolve private datadatdat Maven deps from
+          # repositories that authenticate the same way Go modules do.
+          if [ -n "${GO_MODULES_TOKEN:-}" ]; then
+            git config --global url."https://x-access-token:${GO_MODULES_TOKEN}@github.com/".insteadOf "https://github.com/"
+          fi
+
       - name: Prepare workspace
         run: mkdir -p .health
 
@@ -89,12 +114,35 @@ jobs:
           # Count issue lines (format: file.go:line:col: message)
           grep -cE '\.go:[0-9]+:[0-9]+:' .health/lint.txt > .health/lint-count.txt 2>/dev/null || echo "0" > .health/lint-count.txt
 
+      - name: Measure - lint (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          # Run the project's ktlint task if it exists; otherwise skip. Convention across the
+          # datadatdat ecosystem is a `ktlint` task registered as a JavaExec wrapping
+          # com.pinterest.ktlint:ktlint-cli (see command-executor/build.gradle.kts).
+          ./gradlew --no-daemon -q tasks 2>/dev/null | grep -qE '^ktlint(Check)?\b' && \
+            ./gradlew --no-daemon ktlint > .health/lint.txt 2>&1 || \
+            ./gradlew --no-daemon ktlintCheck > .health/lint.txt 2>&1 || true
+          # ktlint output format: file.kt:line:col: message
+          grep -cE '\.kts?:[0-9]+:[0-9]+' .health/lint.txt > .health/lint-count.txt 2>/dev/null || echo "0" > .health/lint-count.txt
+
       - name: Measure - cyclomatic complexity
         if: inputs.language == 'go'
         continue-on-error: true
         run: |
           gocyclo -over ${{ inputs.max-cyclomatic }} . > .health/gocyclo.txt 2>/dev/null || true
           wc -l < .health/gocyclo.txt | tr -d ' ' > .health/gocyclo-count.txt
+
+      - name: Measure - cyclomatic complexity (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          # Kotlin complexity via detekt is not universally configured; skip for now.
+          # Caller can add detekt locally and gate complexity through their existing CI.
+          # Reporting 0 here means the score won't dock points for missing data, but the
+          # summary will note it explicitly.
+          echo "0" > .health/gocyclo-count.txt
 
       - name: Pre-test setup (caller-provided)
         if: inputs.language == 'go' && inputs.pre-test != ''
@@ -187,6 +235,79 @@ jobs:
           go build ./... > .health/build.log 2>&1 || true
           build_end=$(date +%s)
           echo $((build_end - build_start)) > .health/build-time.txt
+
+      - name: Measure - build time (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          build_start=$(date +%s)
+          ./gradlew --no-daemon assemble > .health/build.log 2>&1 || true
+          build_end=$(date +%s)
+          echo $((build_end - build_start)) > .health/build-time.txt
+
+      - name: Measure - tests + coverage (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          test_start=$(date +%s)
+          # Run test + jacocoTestReport in one invocation. If the project doesn't have
+          # jacoco wired, this still runs tests and we'll report 0 coverage with a note.
+          ./gradlew --no-daemon test jacocoTestReport > .health/test.log 2>&1 || \
+            ./gradlew --no-daemon test > .health/test.log 2>&1 || true
+          test_end=$(date +%s)
+          echo $((test_end - test_start)) > .health/test-time.txt
+
+          # Walk every jacoco XML report (handles multi-module repos like delphix-remote)
+          # and aggregate LINE counters. XML structure:
+          #   <report ...><counter type="LINE" missed="X" covered="Y"/></report>
+          total_missed=0
+          total_covered=0
+          found_report=false
+          while IFS= read -r -d '' xml; do
+            found_report=true
+            # Top-level <counter type="LINE"> appears at the report root; sum across modules.
+            line=$(grep -oE '<counter[^/]*type="LINE"[^/]*/>' "$xml" | tail -1)
+            missed=$(echo "$line" | grep -oE 'missed="[0-9]+"' | grep -oE '[0-9]+' || echo "0")
+            covered=$(echo "$line" | grep -oE 'covered="[0-9]+"' | grep -oE '[0-9]+' || echo "0")
+            total_missed=$((total_missed + ${missed:-0}))
+            total_covered=$((total_covered + ${covered:-0}))
+          done < <(find . -path '*/build/reports/jacoco/*Report*/*.xml' -print0 2>/dev/null)
+
+          if $found_report && [ "$((total_missed + total_covered))" -gt 0 ]; then
+            pct=$(awk -v c="$total_covered" -v m="$total_missed" 'BEGIN { printf "%.1f", (c * 100) / (c + m) }')
+            echo "$pct" > .health/coverage.txt
+            echo "$pct" > .health/coverage-raw.txt
+            echo "jacoco aggregate: ${total_covered} / $((total_missed + total_covered)) lines covered" > .health/coverage-by-pkg.txt
+          else
+            echo "0" > .health/coverage.txt
+            echo "0" > .health/coverage-raw.txt
+            echo "No jacoco XML report found. Wire 'plugins { id(\"jacoco\") }' + 'tasks.test { finalizedBy(tasks.jacocoTestReport) }' in build.gradle.kts to enable coverage reporting." > .health/coverage-by-pkg.txt
+          fi
+          cp .health/test.log .health/test-output.txt 2>/dev/null || true
+
+      - name: Measure - vulnerability scan (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          # OWASP dependency-check requires a Gradle plugin per-repo. Until it's standardized
+          # across the ecosystem, report 0 (no findings → full score). The summary calls this
+          # out so it doesn't look like the scan ran and passed clean.
+          echo "0" > .health/vuln-count.txt
+          echo "Vulnerability scan not yet wired for Kotlin (would require OWASP dependency-check Gradle plugin per-repo). Skipping; reported as 0." > .health/vuln.txt
+
+      - name: Measure - dependency health (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          # Outdated direct-dep count requires the gradle-versions-plugin; not universally wired.
+          # Report 0 + LOC + TODO/FIXME density for the hygiene score.
+          echo "0" > .health/outdated.txt
+          echo "0" > .health/replace.txt
+          loc=$(find . -name '*.kt' -not -path './build/*' -not -path '*/build/*' -not -path './.health/*' -print0 2>/dev/null \
+            | xargs -0 wc -l 2>/dev/null | tail -1 | awk '{print $1}')
+          echo "${loc:-0}" > .health/loc.txt
+          todos=$(grep -rE "TODO|FIXME" --include='*.kt' --include='*.kts' . 2>/dev/null | grep -v '/build/' | grep -v '^./.health/' | wc -l)
+          echo "${todos:-0}" > .health/todos.txt
 
       - name: Measure - vulnerability scan
         if: inputs.language == 'go'
@@ -354,10 +475,18 @@ jobs:
             echo "<details><summary>Scoring rubric</summary>"
             echo ""
             echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
-            echo "- **Coverage** — measured on handwritten code only (excludes \`*.pb.go\`, \`*_gen.go\`, \`*_generated.go\`, \`mock_*.go\`, \`/cmd/X/main.go\`, and any file marked \`// Code generated ... DO NOT EDIT.\`). 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
-            echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s."
-            echo "- **Deps** — measures DIRECT deps only (transitive deps are bumped via parents by \`go mod tidy\`). 5: 0 vulns, 0 replace directives, ≤2 direct outdated. 1: any vuln OR any replace directive in master."
-            echo "- **Hygiene** — TODO/FIXME density per kLOC. 5: ≤1. 1: >20."
+            if [ "${{ inputs.language }}" = "kotlin" ]; then
+              echo "- **Coverage** — aggregated from every jacoco XML report under \`*/build/reports/jacoco/*Report*/\`. Multi-module repos sum LINE counters across modules. 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%. **Note: scoring on raw jacoco lines; no generated-code filter yet (Kotlin equivalent of the Go \`*.pb.go\` exclusion is TODO).**"
+              echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s. Build = \`./gradlew assemble\`; tests = \`./gradlew test jacocoTestReport\`."
+              echo "- **Deps** — **Kotlin metrics not yet wired** (would require OWASP dependency-check Gradle plugin + gradle-versions-plugin). Reported as 0 vulns / 0 outdated / 0 replace until the Kotlin tooling is standardized; the category will score 5 by default. Take this score with a grain of salt for Kotlin repos."
+              echo "- **Cyclomatic complexity** — **not yet measured for Kotlin** (would require detekt with the Complexity ruleset configured). Reported as 0 until standardized."
+              echo "- **Hygiene** — TODO/FIXME density per kLOC across \`.kt\`/\`.kts\` files. 5: ≤1. 1: >20."
+            else
+              echo "- **Coverage** — measured on handwritten code only (excludes \`*.pb.go\`, \`*_gen.go\`, \`*_generated.go\`, \`mock_*.go\`, \`/cmd/X/main.go\`, and any file marked \`// Code generated ... DO NOT EDIT.\`). 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
+              echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s."
+              echo "- **Deps** — measures DIRECT deps only (transitive deps are bumped via parents by \`go mod tidy\`). 5: 0 vulns, 0 replace directives, ≤2 direct outdated. 1: any vuln OR any replace directive in master."
+              echo "- **Hygiene** — TODO/FIXME density per kLOC. 5: ≤1. 1: >20."
+            fi
             echo ""
             echo "Weights: Quality 25%, Coverage 25%, Build 20%, Deps 20%, Hygiene 10%."
             echo "</details>"
