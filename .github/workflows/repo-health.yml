@@ -186,43 +186,21 @@ jobs:
           echo "::endgroup::"
 
           if [ -s .health/coverage.out ]; then
-            # Raw (unfiltered) coverage — for transparency in the summary
+            # Single coverage number — `go tool cover -func` total, unfiltered.
+            # Generated code (proto, mocks, _gen.go) and cmd/X/main.go entry
+            # points are counted just like hand-written code: if it ships in
+            # the binary, it counts. Hiding generated code behind an exclude
+            # regex pushes responsibility onto the code generator instead of
+            # owning the coverage gap; we report the honest number and let
+            # the team decide how to close it (round-trip tests for proto,
+            # smoke tests for main, deleting unused mocks, etc.).
             go tool cover -func=.health/coverage.out > .health/coverage-by-func.txt
-            tail -1 .health/coverage-by-func.txt | awk '{print $3}' | sed 's/%//' > .health/coverage-raw.txt
-
-            # Filter generated/non-library code from the profile before scoring.
-            # Standard practice (codecov, Kubernetes, gRPC-go, aws-sdk-go-v2 all do this).
-            # Excludes:
-            #   *.pb.go              protobuf generated
-            #   *_gen.go             code generation suffix
-            #   *_generated.go       code generation suffix
-            #   mock_*.go            mock files
-            #   /cmd/X/main.go       binary entry points (not library code)
-            #   anything containing "// Code generated ... DO NOT EDIT." marker
-            generated_paths=$(grep -lE '^// Code generated .* DO NOT EDIT\.$' \
-              $(find . -type f -name '*.go' -not -path './vendor/*' -not -path './.health/*') \
-              2>/dev/null | sed 's|^\./||' | tr '\n' '|' | sed 's/|$//')
-            exclude_re='(\.pb\.go|_gen\.go|_generated\.go|mock_[^/]+\.go|/cmd/[^/]+/main\.go):'
-            if [ -n "$generated_paths" ]; then
-              exclude_re="(${generated_paths}|${exclude_re#(}"
-            fi
-            {
-              head -1 .health/coverage.out
-              tail -n +2 .health/coverage.out | grep -vE "$exclude_re" || true
-            } > .health/coverage-filtered.out
-
-            # Scored coverage = filtered profile
-            if [ "$(wc -l < .health/coverage-filtered.out)" -gt 1 ]; then
-              go tool cover -func=.health/coverage-filtered.out | tail -1 | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
-            else
-              cp .health/coverage-raw.txt .health/coverage.txt
-            fi
+            tail -1 .health/coverage-by-func.txt | awk '{print $3}' | sed 's/%//' > .health/coverage.txt
 
             # Per-package summary (from go test output)
             grep -E '^(ok|FAIL|---)\s+github' .health/test.log > .health/coverage-by-pkg.txt 2>/dev/null || true
           else
             echo "0" > .health/coverage.txt
-            echo "0" > .health/coverage-raw.txt
           fi
           # Dump test.log for summary visibility
           cp .health/test.log .health/test-output.txt 2>/dev/null || true
@@ -290,11 +268,9 @@ jobs:
           if $found_report && [ "$((total_missed + total_covered))" -gt 0 ]; then
             pct=$(awk -v c="$total_covered" -v m="$total_missed" 'BEGIN { printf "%.1f", (c * 100) / (c + m) }')
             echo "$pct" > .health/coverage.txt
-            echo "$pct" > .health/coverage-raw.txt
             echo "jacoco aggregate: ${total_covered} / $((total_missed + total_covered)) lines covered" > .health/coverage-by-pkg.txt
           else
             echo "0" > .health/coverage.txt
-            echo "0" > .health/coverage-raw.txt
             echo "No jacoco report found. Wire 'plugins { id(\"jacoco\") }' + 'tasks.test { finalizedBy(tasks.jacocoTestReport) }' in build.gradle.kts to enable coverage reporting. Either CSV or XML output is sufficient." > .health/coverage-by-pkg.txt
           fi
           cp .health/test.log .health/test-output.txt 2>/dev/null || true
@@ -372,7 +348,6 @@ jobs:
           lint_count=$(read_int .health/lint-count.txt)
           cyclo_count=$(read_int .health/gocyclo-count.txt)
           coverage=$(read_int .health/coverage.txt)
-          coverage_raw=$(read_int .health/coverage-raw.txt)
           coverage_int=${coverage%.*}
           coverage_int=${coverage_int:-0}
           test_time=$(read_int .health/test-time.txt)
@@ -442,7 +417,7 @@ jobs:
             echo "| Category | Score | Weight | Measured |"
             echo "|---|---|---|---|"
             echo "| Code Quality | ${score_quality}/5 | 25% | ${lint_count} lint issues, ${cyclo_count} funcs over cyclomatic ${max_cyclo} |"
-            echo "| Test Coverage | ${score_coverage}/5 | 25% | ${coverage}% on handwritten code (raw incl. generated: ${coverage_raw}%, floor: ${coverage_floor}%) |"
+            echo "| Test Coverage | ${score_coverage}/5 | 25% | ${coverage}% line coverage (floor: ${coverage_floor}%) |"
             echo "| Build Efficiency | ${score_build}/5 | 20% | build ${build_time}s, tests ${test_time}s |"
             echo "| Dependencies | ${score_deps}/5 | 20% | ${outdated} direct deps outdated, ${vuln_count} vulns, ${replace_count} replace directives |"
             echo "| Hygiene | ${score_hygiene}/5 | 10% | ${todos} TODO/FIXME across ${loc} LOC (${todo_density} per kLOC) |"
@@ -490,13 +465,13 @@ jobs:
             echo ""
             echo "- **Code Quality** — 5: clean lint+complexity. 1: >50 lint issues OR >10 over-cyclomatic functions."
             if [ "${{ inputs.language }}" = "kotlin" ]; then
-              echo "- **Coverage** — aggregated from every jacoco XML report under \`*/build/reports/jacoco/*Report*/\`. Multi-module repos sum LINE counters across modules. 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%. **Note: scoring on raw jacoco lines; no generated-code filter yet (Kotlin equivalent of the Go \`*.pb.go\` exclusion is TODO).**"
+              echo "- **Coverage** — aggregated from every jacoco XML report under \`*/build/reports/jacoco/*Report*/\` (CSV fallback if XML absent). Multi-module repos sum LINE counters across modules. Generated code (protobuf, grpc, mocks) counts just like hand-written code. 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
               echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s. Build = \`./gradlew assemble\`; tests = \`./gradlew test jacocoTestReport\`."
               echo "- **Deps** — **Kotlin metrics not yet wired** (would require OWASP dependency-check Gradle plugin + gradle-versions-plugin). Reported as 0 vulns / 0 outdated / 0 replace until the Kotlin tooling is standardized; the category will score 5 by default. Take this score with a grain of salt for Kotlin repos."
               echo "- **Cyclomatic complexity** — **not yet measured for Kotlin** (would require detekt with the Complexity ruleset configured). Reported as 0 until standardized."
               echo "- **Hygiene** — TODO/FIXME density per kLOC across \`.kt\`/\`.kts\` files. 5: ≤1. 1: >20."
             else
-              echo "- **Coverage** — measured on handwritten code only (excludes \`*.pb.go\`, \`*_gen.go\`, \`*_generated.go\`, \`mock_*.go\`, \`/cmd/X/main.go\`, and any file marked \`// Code generated ... DO NOT EDIT.\`). 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
+              echo "- **Coverage** — single number from \`go tool cover -func\` (Go) or jacoco LINE counter (Kotlin). Generated code, mocks, and \`cmd/X/main.go\` count just like hand-written code: if it ships, it counts. 5: ≥85%. 4: ≥75%. 3: ≥65%. 2: ≥50%. 1: <50%."
               echo "- **Build** — 5: build <30s and tests <60s. 1: build >240s or tests >480s."
               echo "- **Deps** — measures DIRECT deps only (transitive deps are bumped via parents by \`go mod tidy\`). 5: 0 vulns, 0 replace directives, ≤2 direct outdated. 1: any vuln OR any replace directive in master."
               echo "- **Hygiene** — TODO/FIXME density per kLOC. 5: ≤1. 1: >20."
