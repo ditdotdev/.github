@@ -8,10 +8,10 @@ on:
         required: true
         type: string
       coverage-floor:
-        description: 'Minimum line coverage % (informational floor in summary)'
+        description: 'Minimum line coverage % — enforced as a hard floor when mode=block (PR fails if below)'
         required: false
         type: number
-        default: 70
+        default: 90
       max-cyclomatic:
         description: 'Cyclomatic complexity threshold per function'
         required: false
@@ -205,24 +205,6 @@ jobs:
           # Dump test.log for summary visibility
           cp .health/test.log .health/test-output.txt 2>/dev/null || true
 
-      - name: Measure - build time
-        if: inputs.language == 'go'
-        continue-on-error: true
-        run: |
-          build_start=$(date +%s)
-          go build ./... > .health/build.log 2>&1 || true
-          build_end=$(date +%s)
-          echo $((build_end - build_start)) > .health/build-time.txt
-
-      - name: Measure - build time (Kotlin)
-        if: inputs.language == 'kotlin'
-        continue-on-error: true
-        run: |
-          build_start=$(date +%s)
-          ./gradlew --no-daemon assemble > .health/build.log 2>&1 || true
-          build_end=$(date +%s)
-          echo $((build_end - build_start)) > .health/build-time.txt
-
       - name: Measure - tests + coverage (Kotlin)
         if: inputs.language == 'kotlin'
         continue-on-error: true
@@ -274,6 +256,42 @@ jobs:
             echo "No jacoco report found. Wire 'plugins { id(\"jacoco\") }' + 'tasks.test { finalizedBy(tasks.jacocoTestReport) }' in build.gradle.kts to enable coverage reporting. Either CSV or XML output is sufficient." > .health/coverage-by-pkg.txt
           fi
           cp .health/test.log .health/test-output.txt 2>/dev/null || true
+
+      # Fail-fast: if the gate is in block mode and coverage is below the
+      # floor, exit BEFORE we waste runner minutes on build/vuln/deps. The
+      # final score-compute step also checks this, but pulling it forward
+      # means a failing PR returns red in ~test-time seconds rather than
+      # ~test+build+vuln+deps seconds.
+      - name: Coverage gate (fail fast)
+        if: inputs.mode == 'block'
+        run: |
+          coverage=$(cat .health/coverage.txt 2>/dev/null || echo "0")
+          coverage_int=${coverage%.*}
+          coverage_int=${coverage_int:-0}
+          floor_int=$((${{ inputs.coverage-floor }}))
+          if [ "$coverage_int" -lt "$floor_int" ]; then
+            echo "::error::Coverage gate failed fast: ${coverage}% below floor ${floor_int}%. Skipping remaining health measurements."
+            exit 1
+          fi
+          echo "Coverage gate passed: ${coverage}% >= floor ${floor_int}%"
+
+      - name: Measure - build time
+        if: inputs.language == 'go'
+        continue-on-error: true
+        run: |
+          build_start=$(date +%s)
+          go build ./... > .health/build.log 2>&1 || true
+          build_end=$(date +%s)
+          echo $((build_end - build_start)) > .health/build-time.txt
+
+      - name: Measure - build time (Kotlin)
+        if: inputs.language == 'kotlin'
+        continue-on-error: true
+        run: |
+          build_start=$(date +%s)
+          ./gradlew --no-daemon assemble > .health/build.log 2>&1 || true
+          build_end=$(date +%s)
+          echo $((build_end - build_start)) > .health/build-time.txt
 
       - name: Measure - vulnerability scan (Kotlin)
         if: inputs.language == 'kotlin'
@@ -483,8 +501,19 @@ jobs:
 
           cat .health/summary.md >> "$GITHUB_STEP_SUMMARY"
 
-          # Block mode: fail if any category < 3
+          # Block mode: fail if coverage is below the floor, OR if any
+          # category scored below 3. The hard-floor check is enforced
+          # independently of the bucket score — a repo at 88% would still
+          # score 5/5 on Coverage but fail the gate if the floor is 90.
+          # This is what lets us ratchet the ecosystem standard upward
+          # one floor bump at a time.
           if [ "$mode" = "block" ]; then
+            floor_int=${coverage_floor%.*}
+            floor_int=${floor_int:-0}
+            if [ "$coverage_int" -lt "$floor_int" ]; then
+              echo "::error::Health check failed (mode=block): coverage ${coverage}% below floor ${coverage_floor}%."
+              exit 1
+            fi
             for s in $score_quality $score_coverage $score_build $score_deps $score_hygiene; do
               if [ "$s" -lt 3 ]; then
                 echo "::error::Health check failed (mode=block): one or more categories scored below 3."
