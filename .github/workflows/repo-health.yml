@@ -227,7 +227,14 @@ jobs:
           total_covered=0
           found_report=false
 
-          # XML pass.
+          # XML pass. The standard jacoco layout puts the report at
+          # `build/reports/jacoco/<sourceset>/jacocoTestReport.xml`
+          # (e.g. `.../jacoco/test/jacocoTestReport.xml`). The previous
+          # glob looked for `*Report*/` as the parent directory, which
+          # never matched anything — silently reported 0% on every
+          # standard-layout Kotlin repo. The new glob matches the file
+          # name directly so it works whether the parent dir is `test`,
+          # `integrationTest`, or anything else.
           while IFS= read -r -d '' xml; do
             found_report=true
             line=$(grep -oE '<counter[^/]*type="LINE"[^/]*/>' "$xml" | tail -1)
@@ -235,7 +242,7 @@ jobs:
             covered=$(echo "$line" | grep -oE 'covered="[0-9]+"' | grep -oE '[0-9]+' || echo "0")
             total_missed=$((total_missed + ${missed:-0}))
             total_covered=$((total_covered + ${covered:-0}))
-          done < <(find . -path '*/build/reports/jacoco/*Report*/*.xml' -print0 2>/dev/null)
+          done < <(find . -path '*/build/reports/jacoco/*/jacocoTestReport.xml' -not -path '*/build/tmp/*' -print0 2>/dev/null)
 
           # CSV fallback — only if XML pass found nothing. Sum LINE_MISSED (col 8) and LINE_COVERED (col 9).
           if ! $found_report; then
@@ -244,7 +251,7 @@ jobs:
               read sum_missed sum_covered < <(awk -F',' 'NR > 1 { m += $8; c += $9 } END { print m+0, c+0 }' "$csv")
               total_missed=$((total_missed + ${sum_missed:-0}))
               total_covered=$((total_covered + ${sum_covered:-0}))
-            done < <(find . -path '*/build/reports/jacoco/*Report*/*.csv' -print0 2>/dev/null)
+            done < <(find . -path '*/build/reports/jacoco/*/jacocoTestReport.csv' -not -path '*/build/tmp/*' -print0 2>/dev/null)
           fi
 
           if $found_report && [ "$((total_missed + total_covered))" -gt 0 ]; then
