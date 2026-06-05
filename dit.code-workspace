@@ -1,32 +1,32 @@
 {
     "folders": [
         {
-            "name": "🎯 datadatdat (CLI)",
-            "path": "datadatdat"
+            "name": "🎯 dit (CLI)",
+            "path": "dit"
         },
         {
-            "name": "🚀 datadatdat-server (Core Server)",
-            "path": "datadatdat-server"
+            "name": "🚀 dit-server (Core Server)",
+            "path": "dit-server"
         },
         {
-            "name": "👊 datadatdat-remote-server (Remote Web)",
-            "path": "datadatdat-remote-server"
+            "name": "👊 dit-remote-server (Remote Web)",
+            "path": "dit-remote-server"
         },
         {
-            "name": "👊 datadatdat-remote-go",
-            "path": "datadatdat-remote-go"
+            "name": "👊 dit-remote-go",
+            "path": "dit-remote-go"
         },
         {
-            "name": "👊 datadatdat-remote",
-            "path": "datadatdat-remote"
+            "name": "👊 dit-remote",
+            "path": "dit-remote"
         },
         {
-            "name": "📡 datadatdat-client-go (Go Client)",
-            "path": "datadatdat-client-go"
+            "name": "📡 dit-client-go (Go Client)",
+            "path": "dit-client-go"
         },
         {
-            "name": "🐳 datadatdat-docker-proxy (Docker API)",
-            "path": "datadatdat-docker-proxy"
+            "name": "🐳 dit-docker-proxy (Docker API)",
+            "path": "dit-docker-proxy"
         },
         {
             "name": "🛠️ remote-sdk-go (Remote SDK - Go)",
@@ -93,8 +93,8 @@
             "path": "dynamodb-local"
         },
         {
-            "name": "🎮 datadatdat-demos (Demo Datasets)",
-            "path": "datadatdat-demos"
+            "name": "🎮 dit-demos (Demo Datasets)",
+            "path": "dit-demos"
         },
         {
             "name": "📋 template (Repository Template)",
@@ -109,8 +109,8 @@
             "path": "community-aws"
         },
         {
-            "name": "📖 datadatdat.github.io (Documentation)",
-            "path": "datadatdat.github.io"
+            "name": "📖 dit.github.io (Documentation)",
+            "path": "dit.github.io"
         },
         {
             "name": "🔨 zfs-builder (ZFS Build Tools)",

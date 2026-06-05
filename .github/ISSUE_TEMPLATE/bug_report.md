@@ -19,7 +19,7 @@ Describe in as much detail as possible how to reproduce the problem.
 
 ## Version
 
-Indicate the relevant versions of components. This may include the Datadatdat
+Indicate the relevant versions of components. This may include the Dit
 package version, operating system version, or other components relevant to
 the project.
 

@@ -1,6 +1,6 @@
-# Datadatdat Community Support
+# Dit Community Support
 
-The Datadatdat community home can be found at [datadatdat.com](https://datadatdat.com).
+The Dit community home can be found at [datadatdat.com](https://datadatdat.com).
 There you can find a [getting started](https://datadatdat.com/getting-started)
 guide as well as [documentation](https://datadatdat.com/docs).
 

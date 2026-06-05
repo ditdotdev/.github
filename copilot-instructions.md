@@ -1,4 +1,4 @@
-# Datadatdat Data Management Platform - AI Agent Instructions
+# Dit Data Management Platform - AI Agent Instructions
 
 ## Critical Rules
 
@@ -30,7 +30,7 @@
 for d in */; do cd "$d" && git checkout master && git pull && cd ..; done
 
 # Verify version consistency across Go modules
-grep -r "github.com/datadatdat/remote-sdk-go" */go.mod
+grep -r "github.com/ditdotdev/remote-sdk-go" */go.mod
 ```
 
 ### Multi-Repository Operations
@@ -96,11 +96,11 @@ When Gradle is upgraded (e.g., 8.x → 9.x):
 
 ## Architecture Overview
 
-Datadatdat is a proprietary multi-component data versioning platform with ZFS integration and Docker-based containerization. The ecosystem consists of:
+Dit is a proprietary multi-component data versioning platform with ZFS integration and Docker-based containerization. The ecosystem consists of:
 
-- **datadatdat** (CLI) - Go-based CLI that orchestrates data versioning operations
-- **datadatdat-server** - Core Docker container providing ZFS storage, PostgreSQL, and API services  
-- **datadatdat-client-go** - Auto-generated Go client from OpenAPI spec
+- **dit** (CLI) - Go-based CLI that orchestrates data versioning operations
+- **dit-server** - Core Docker container providing ZFS storage, PostgreSQL, and API services  
+- **dit-client-go** - Auto-generated Go client from OpenAPI spec
 - **Remote providers** - Dual-language (Go/Kotlin) implementations for S3, SSH, S3Web storage backends
 - **SDK libraries** - `remote-sdk-go` and `remote-sdk` for building new remote providers
 - **Testing framework** - BATS (Bash Automated Testing System) for cross-platform end-to-end tests
@@ -113,12 +113,12 @@ Datadatdat is a proprietary multi-component data versioning platform with ZFS in
 make release   # Creates cross-platform binaries in release/
 
 # Individual platform builds
-make windows   # Creates datadatdat.exe  
+make windows   # Creates dit.exe  
 make linux-amd64
 make darwin-arm64
 
 # Local development build
-make build     # Creates build/datadatdat
+make build     # Creates build/dit
 ```
 
 ### Testing Infrastructure
@@ -134,7 +134,7 @@ make test-ssh-workflow     # Requires SSH key setup
 
 **Critical Test Recovery**: After failed `make e2e` runs, always reset before retrying:
 ```bash
-./datadatdat.exe uninstall -f   # Cleans up corrupted test state
+./dit.exe uninstall -f   # Cleans up corrupted test state
 make e2e                   # Safe to retry after uninstall
 ```
 
@@ -144,7 +144,7 @@ make e2e                   # Safe to retry after uninstall
 cd cleanslate
 .\setup-zfs-pools.ps1 -Clean -VerifyDocker
 ```
-This creates required ZFS pools that Datadatdat containers depend on.
+This creates required ZFS pools that Dit containers depend on.
 
 ## Provider Architecture Pattern
 
@@ -163,23 +163,23 @@ Both implement the `remote-sdk` interface for push/pull operations to external s
 - All repos follow semantic versioning with `v0.x.x` tags
 
 ### Docker Integration
-- Main container: `datadatdat/datadatdat:latest` (server + ZFS + PostgreSQL)
-- ZFS builder: `datadatdat/zfs-builder:latest` (for kernel module compilation)
-- SSH test: `datadatdat/ssh-test-server:latest` (testing only)
+- Main container: `ditdotdev/dit:latest` (server + ZFS + PostgreSQL)
+- ZFS builder: `ditdotdev/zfs-builder:latest` (for kernel module compilation)
+- SSH test: `ditdotdev/ssh-test-server:latest` (testing only)
 - Use `--registry` flag to override Docker Hub registry
 
 #### Container Orchestration Details
-The `datadatdat-server` container runs multiple services:
+The `dit-server` container runs multiple services:
 - **ZFS utilities** - Direct filesystem integration for data versioning
 - **PostgreSQL database** - Metadata storage for commits, repositories, and remote configurations
 - **docker-volume-proxy** - Bridges Docker volumes to ZFS datasets
-- **Datadatdat API server** - REST endpoints consumed by CLI and client libraries
+- **Dit API server** - REST endpoints consumed by CLI and client libraries
 
-**Volume Management**: Datadatdat creates ZFS datasets that appear as Docker volumes. The volume proxy component requires `socat` package (included in Dockerfile) to handle volume driver communication between Docker daemon and ZFS subsystem.
+**Volume Management**: Dit creates ZFS datasets that appear as Docker volumes. The volume proxy component requires `socat` package (included in Dockerfile) to handle volume driver communication between Docker daemon and ZFS subsystem.
 
 **Pool Requirements**: 
-- `datadatdat-docker` pool - Required for container volume operations
-- `datadatdat` pool - Optional but recommended for CLI operations
+- `dit-docker` pool - Required for container volume operations
+- `dit` pool - Optional but recommended for CLI operations
 
 ### Testing Framework (BATS)
 Tests use BATS (Bash Automated Testing System) for cross-platform compatibility:
@@ -196,9 +196,9 @@ make test-getting-started
 ### Go Module Dependencies
 Main CLI imports remote providers directly:
 ```go
-github.com/datadatdat/s3-remote-go v0.2.3
-github.com/datadatdat/ssh-remote-go v0.2.2
-github.com/datadatdat/datadatdat-client-go v0.1.3
+github.com/ditdotdev/s3-remote-go v0.2.3
+github.com/ditdotdev/ssh-remote-go v0.2.2
+github.com/ditdotdev/dit-client-go v0.1.3
 ```
 
 ### Version Management
@@ -206,7 +206,7 @@ github.com/datadatdat/datadatdat-client-go v0.1.3
 - Client libraries auto-generated from server OpenAPI spec
 - Remote providers maintain independent semantic versions
 - All repositories use automated GitHub Actions for releases
-- Docker images published to `datadatdat/*` namespace on Docker Hub
+- Docker images published to `ditdotdev/*` namespace on Docker Hub
 
 ## Clean Slate Testing
 
@@ -216,15 +216,15 @@ cd cleanslate
 .\clean-slate-automation.ps1 -Verbose
 ```
 
-This handles Docker cleanup, ZFS pool recreation, and complete Datadatdat reinstallation. Essential for troubleshooting integration issues.
+This handles Docker cleanup, ZFS pool recreation, and complete Dit reinstallation. Essential for troubleshooting integration issues.
 
 ## Demo Infrastructure
 
-The datadatdat-demos repository contains sample datasets for testing and examples:
+The dit-demos repository contains sample datasets for testing and examples:
 
 ### S3 Demo Bucket
-- **Production bucket:** `demo-datadatdat`
-- **Web endpoint:** `s3web://demo-datadatdat.s3-website-us-west-2.amazonaws.com`
+- **Production bucket:** `demo-dit`
+- **Web endpoint:** `s3web://demo-dit.s3-website-us-west-2.amazonaws.com`
 - **Available demos:** postgres, dynamodb hello-world examples
 - **Scripts:** `build.sh` → `publish.sh` → `destroy.sh` workflow
 
@@ -234,30 +234,30 @@ The datadatdat-demos repository contains sample datasets for testing and example
 d3 run -n hello-world-postgres -e POSTGRES_HOST_AUTH_METHOD=trust postgres:latest
 
 # DynamoDB demo (uses port 8001 to avoid conflicts)
-d3 run -n hello-world-dynamodb -P datadatdat/dynamodb-local:latest -- -p 8001:8000
+d3 run -n hello-world-dynamodb -P ditdotdev/dynamodb-local:latest -- -p 8001:8000
 ```
 
 ## Workspace Management
 
-The Datadatdat ecosystem is organized as a VS Code multi-root workspace. To get the complete list of repositories:
+The Dit ecosystem is organized as a VS Code multi-root workspace. To get the complete list of repositories:
 
 ```bash
 # From any repository directory in /c/dev
-cat ../datadatdat.code-workspace
+cat ../dit.code-workspace
 ```
 
-This workspace file contains all component repositories and is the authoritative source for determining which repositories are part of the Datadatdat ecosystem.
+This workspace file contains all component repositories and is the authoritative source for determining which repositories are part of the Dit ecosystem.
 
 ## File Locations for Common Tasks
 
 - **Adding CLI commands**: `internal/app/commands/`
 - **Provider interface**: `internal/app/providers/Provider.go`
-- **Main entry point**: `cmd/datadatdat/datadatdat.go`
+- **Main entry point**: `cmd/ditdotdev/dit.go`
 - **Cross-platform builds**: `Makefile` release targets
 - **End-to-end tests**: `tests/endtoend/` with BATS test files
 - **Docker configuration**: `Dockerfile` (includes ZFS utilities + socat)
-- **Release process**: `RELEASE.md` in main datadatdat repository
-- **Workspace configuration**: `datadatdat.code-workspace` in `/c/dev` directory
+- **Release process**: `RELEASE.md` in main dit repository
+- **Workspace configuration**: `dit.code-workspace` in `/c/dev` directory
 
 ## GitHub Issue Management
 

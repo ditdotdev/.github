@@ -7,7 +7,7 @@ assignees: ''
 
 ## Container/Image Information
 
-**Image Name:** (e.g., datadatdat/localstack:latest)
+**Image Name:** (e.g., ditdotdev/localstack:latest)
 **Container Runtime:** (Docker Desktop, Docker Engine, etc.)
 **Host OS:** (Windows, macOS, Linux distribution)
 
