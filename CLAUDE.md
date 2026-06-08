@@ -1,4 +1,4 @@
-# Datadatdat - Claude Instructions
+# Dit - Claude Instructions
 
 ## Critical Rules
 

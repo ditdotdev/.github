@@ -62,9 +62,9 @@ jobs:
       - name: Configure Go env
         if: inputs.language == 'go'
         run: |
-          go env -w GOPRIVATE=github.com/datadatdat/*
-          go env -w GONOPROXY=github.com/datadatdat/*
-          go env -w GONOSUMDB=github.com/datadatdat/*
+          go env -w GOPRIVATE=github.com/ditdotdev/*
+          go env -w GONOPROXY=github.com/ditdotdev/*
+          go env -w GONOSUMDB=github.com/ditdotdev/*
           go env -w GOPROXY=https://proxy.golang.org,direct
 
       - name: Install measurement tools
@@ -97,7 +97,7 @@ jobs:
         env:
           GO_MODULES_TOKEN: ${{ secrets.GO_MODULES_TOKEN }}
         run: |
-          # Kotlin projects often resolve private datadatdat Maven deps from
+          # Kotlin projects often resolve private dit Maven deps from
           # repositories that authenticate the same way Go modules do.
           if [ -n "${GO_MODULES_TOKEN:-}" ]; then
             git config --global url."https://x-access-token:${GO_MODULES_TOKEN}@github.com/".insteadOf "https://github.com/"
@@ -119,7 +119,7 @@ jobs:
         continue-on-error: true
         run: |
           # Run the project's ktlint task if it exists; otherwise skip. Convention across the
-          # datadatdat ecosystem is a `ktlint` task registered as a JavaExec wrapping
+          # dit ecosystem is a `ktlint` task registered as a JavaExec wrapping
           # com.pinterest.ktlint:ktlint-cli (see command-executor/build.gradle.kts).
           ./gradlew --no-daemon -q tasks 2>/dev/null | grep -qE '^ktlint(Check)?\b' && \
             ./gradlew --no-daemon ktlint > .health/lint.txt 2>&1 || \
