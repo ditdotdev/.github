@@ -105,8 +105,17 @@
             "path": ".github"
         },
         {
+<<<<<<< HEAD
             "name": "📖 ditdotdev.github.io (Documentation)",
             "path": "ditdotdev.github.io"
+=======
+            "name": "☁️ community-aws (AWS Resources)",
+            "path": "community-aws"
+        },
+        {
+            "name": "📖 dit.github.io (Documentation)",
+            "path": "dit.github.io"
+>>>>>>> d5f959fabfa268614c00118447e1c6899465b669
         },
         {
             "name": "🔨 zfs-builder (ZFS Build Tools)",

@@ -1,6 +1,6 @@
 # Maintainers
 
-Unless otherwise noted, all repositories are maintained by the Datadatdat
+Unless otherwise noted, all repositories are maintained by the Dit
 community maintainers:
 
    * Derek Smart ([mcred](https://github.com/mcred))([derek.smart@delphix.com](derek.smart@delphix.com))
