@@ -321,7 +321,11 @@ jobs:
           loc=$(find . -name '*.kt' -not -path './build/*' -not -path '*/build/*' -not -path './.health/*' -print0 2>/dev/null \
             | xargs -0 wc -l 2>/dev/null | tail -1 | awk '{print $1}')
           echo "${loc:-0}" > .health/loc.txt
-          todos=$(grep -rE "TODO|FIXME" --include='*.kt' --include='*.kts' . 2>/dev/null | grep -v '/build/' | grep -v '^./.health/' | wc -l)
+          # Hygiene: count ONLY real marker comments (// TODO:, /* FIXME, etc.).
+          # The comment leader (//, /*, *) must immediately precede TODO/FIXME so
+          # prose that merely mentions the word (e.g. "closes the TODO from #697")
+          # is not miscounted as open debt.
+          todos=$(grep -rE '(//+|/\*|\*+)[[:space:]]*(TODO|FIXME)' --include='*.kt' --include='*.kts' . 2>/dev/null | grep -v '/build/' | grep -v '^./.health/' | wc -l)
           echo "${todos:-0}" > .health/todos.txt
 
       - name: Measure - vulnerability scan
@@ -361,7 +365,11 @@ jobs:
           grep -c "^replace" go.mod > .health/replace.txt 2>/dev/null || echo "0" > .health/replace.txt
           loc=$(find . -name '*.go' -not -path './vendor/*' -not -path './.health/*' -print0 2>/dev/null | xargs -0 wc -l 2>/dev/null | tail -1 | awk '{print $1}')
           echo "${loc:-0}" > .health/loc.txt
-          todos=$(grep -rE "TODO|FIXME" --include='*.go' . 2>/dev/null | grep -v '^./.health/' | wc -l)
+          # Hygiene: count ONLY real marker comments (// TODO:, /* FIXME, etc.).
+          # The comment leader (//, /*, *) must immediately precede TODO/FIXME so
+          # prose that merely mentions the word (e.g. "closes the TODO from #697")
+          # is not miscounted as open debt.
+          todos=$(grep -rE '(//+|/\*|\*+)[[:space:]]*(TODO|FIXME)' --include='*.go' . 2>/dev/null | grep -v '^./.health/' | wc -l)
           echo "${todos:-0}" > .health/todos.txt
 
       - name: Compute scores
