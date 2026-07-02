@@ -1,12 +1,12 @@
 # Dit Community Support
 
-The Dit community home can be found at [datadatdat.com](https://datadatdat.com).
-There you can find a [getting started](https://datadatdat.com/getting-started)
-guide as well as [documentation](https://datadatdat.com/docs).
+The Dit community home can be found at [dit.dev](https://dit.dev).
+There you can find a [getting started](https://dit.dev/getting-started)
+guide as well as [documentation](https://dit.dev/docs).
 
 To connect with members of the community, head over to the
-[community page](https://datadatdat.com/community) where you can
-[join](https://join.datadatdat.com) the slack workspace. There, you can
+[community page](https://dit.dev/community) where you can
+[join](https://join.dit.dev) the slack workspace. There, you can
 ask questions and get help. If you're not sure whether something is a bug
 or not, be sure to ask there first.
 

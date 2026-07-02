@@ -25,7 +25,3 @@ replace these defaults as needed.
 
  * [Repository Template](https://github.com/ditdotdev/template) - Modernized template with CI/CD automation
  * [Demo Infrastructure](https://github.com/ditdotdev/dit-demos) - Sample datasets and usage examples
-
-## AI Integration
-
- * [Copilot Instructions](copilot-instructions.md) - Comprehensive context for AI development assistance
