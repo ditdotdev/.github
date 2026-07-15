@@ -131,7 +131,20 @@ jobs:
         if: inputs.language == 'go'
         continue-on-error: true
         run: |
-          gocyclo -over ${{ inputs.max-cyclomatic }} . > .health/gocyclo.txt 2>/dev/null || true
+          # Measure hand-written code only. Files carrying the canonical
+          # generated-code marker (https://go.dev/s/generatedcode) - e.g. the
+          # openapi-generator client in dit-client-go - can't be hand-refactored,
+          # so flagging them turns the score into permanent un-actionable debt
+          # (ditdotdev/dit-client-go#49). Vendored trees (vendor/, and Go files
+          # shipped inside JS tooling under node_modules/) are skipped for the
+          # same reason.
+          grep -rLE --include='*.go' '^// Code generated .* DO NOT EDIT\.$' . 2>/dev/null \
+            | grep -vE '(^|/)(vendor|node_modules)/' > .health/gocyclo-files.txt || true
+          if [ -s .health/gocyclo-files.txt ]; then
+            xargs gocyclo -over ${{ inputs.max-cyclomatic }} < .health/gocyclo-files.txt > .health/gocyclo.txt 2>/dev/null || true
+          else
+            : > .health/gocyclo.txt
+          fi
           wc -l < .health/gocyclo.txt | tr -d ' ' > .health/gocyclo-count.txt
 
       - name: Measure - cyclomatic complexity (Kotlin)
