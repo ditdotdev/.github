@@ -25,3 +25,10 @@ replace these defaults as needed.
 
  * [Repository Template](https://github.com/ditdotdev/template) - Modernized template with CI/CD automation
  * [Demo Infrastructure](https://github.com/ditdotdev/dit-demos) - Sample datasets and usage examples
+
+## License
+
+This project is licensed under the Business Source License 1.1 (BUSL-1.1).
+On the Change Date (four years from the publication of each version), the
+license for that version converts to the Mozilla Public License 2.0
+(MPL-2.0). See [LICENSE](LICENSE) for the full terms.
