@@ -33,11 +33,26 @@ on:
     secrets:
       GO_MODULES_TOKEN:
         required: false
+      # Needed by callers whose builds resolve artifacts from the s3://dit-maven
+      # repository (AwsImAuthentication reads the default AWS credential chain).
+      # Without these, Gradle resolution fails whenever the artifact is not
+      # already in the restored cache — e.g. right after a release bumps every
+      # dev.dit dependency (ditdotdev/dit-server#259).
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+      AWS_REGION:
+        required: false
 
 jobs:
   health:
     name: Repo Health
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
     permissions:
       contents: read
       pull-requests: write
@@ -169,7 +184,12 @@ jobs:
         continue-on-error: true
         run: |
           test_start=$(date +%s)
-          go test -race -coverprofile=.health/coverage.out -covermode=atomic ./... > .health/test.log 2>&1 || true
+          go test -race -coverprofile=.health/coverage.out -covermode=atomic ./... > .health/test.log 2>&1 || {
+            touch .health/test-failed
+            echo "::group::go test output (tail)"
+            tail -60 .health/test.log
+            echo "::endgroup::"
+          }
           test_end=$(date +%s)
           echo $((test_end - test_start)) > .health/test-time.txt
 
@@ -228,8 +248,15 @@ jobs:
           test_start=$(date +%s)
           # Run test + jacocoTestReport in one invocation. If the project doesn't have
           # jacoco wired, this still runs tests and we'll report 0 coverage with a note.
+          # A hard gradle failure (compile error, dependency resolution) is recorded in
+          # a marker so the gate reports it as a build failure, not as 0% coverage.
           ./gradlew --no-daemon test jacocoTestReport > .health/test.log 2>&1 || \
-            ./gradlew --no-daemon test > .health/test.log 2>&1 || true
+            ./gradlew --no-daemon test > .health/test.log 2>&1 || {
+              touch .health/test-failed
+              echo "::group::gradle test output (tail)"
+              tail -60 .health/test.log
+              echo "::endgroup::"
+            }
           test_end=$(date +%s)
           echo $((test_end - test_start)) > .health/test-time.txt
 
@@ -288,6 +315,15 @@ jobs:
       - name: Coverage gate (fail fast)
         if: inputs.mode == 'block'
         run: |
+          # A failed test run means coverage was never measured — report the real
+          # failure instead of a misleading "0% below floor" (dit-server#259).
+          if [ -f .health/test-failed ]; then
+            echo "::group::test output (tail)"
+            tail -60 .health/test.log 2>/dev/null || true
+            echo "::endgroup::"
+            echo "::error::Test run FAILED (build/resolution error) — coverage could not be measured. This is a build failure, not 0% coverage."
+            exit 1
+          fi
           coverage=$(cat .health/coverage.txt 2>/dev/null || echo "0")
           coverage_int=${coverage%.*}
           coverage_int=${coverage_int:-0}
