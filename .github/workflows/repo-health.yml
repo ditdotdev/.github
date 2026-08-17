@@ -385,8 +385,10 @@ jobs:
         continue-on-error: true
         run: |
           # govulncheck exit codes: 0=no findings, 3=vulnerabilities found, other=tool error
-          govulncheck ./... > .health/vuln.txt 2>&1
-          gv_exit=$?
+          # `|| gv_exit=$?` keeps the default `bash -e` shell from aborting the
+          # step on a nonzero exit before the case below can classify it.
+          gv_exit=0
+          govulncheck ./... > .health/vuln.txt 2>&1 || gv_exit=$?
           case "$gv_exit" in
             0)
               echo "0" > .health/vuln-count.txt
@@ -589,8 +591,11 @@ jobs:
             done
           fi
 
+      # Dependabot-triggered runs always get a read-only GITHUB_TOKEN
+      # (the pull-requests:write permission above is ignored for them),
+      # so posting the comment would 403 and fail the whole job.
       - name: Post sticky PR comment
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         uses: actions/github-script@v9
         with:
           script: |
