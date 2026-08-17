@@ -6,7 +6,7 @@ guide as well as [documentation](https://dit.dev/docs).
 
 To connect with members of the community, head over to the
 [community page](https://dit.dev/community) where you can
-[join](https://join.dit.dev) the slack workspace. There, you can
+[join](https://join.slack.com/t/ditdotdev/shared_invite/zt-472e8qfmd-4pm5SDFF5vo_W8nJWddrbg) the slack workspace. There, you can
 ask questions and get help. If you're not sure whether something is a bug
 or not, be sure to ask there first.
 
