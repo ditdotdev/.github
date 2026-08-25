@@ -90,7 +90,20 @@ jobs:
         run: |
           go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      # Install golangci-lint from its prebuilt release binary via the official
+      # action instead of `go install ...@latest`. Building from source resolves
+      # and verifies every transitive module through sum.golang.org on each run,
+      # which is exactly what failed in ditdotdev/dit run 32860525954
+      # ("reading https://sum.golang.org/tile/...: stream error ... INTERNAL_ERROR").
+      # install-only leaves running the linter to the "Measure - lint" step so
+      # its raw output still lands in .health/lint.txt for scoring.
+      - name: Install golangci-lint
+        if: inputs.language == 'go'
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          install-only: true
 
       - name: Download deps
         if: inputs.language == 'go'
