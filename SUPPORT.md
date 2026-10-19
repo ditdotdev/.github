@@ -1,11 +1,11 @@
 # Dit Community Support
 
-The Dit community home can be found at [dit.dev](https://dit.dev).
-There you can find a [getting started](https://dit.dev/getting-started)
-guide as well as [documentation](https://dit.dev/docs).
+The Dit community home can be found at [ditdotdev.github.io](https://ditdotdev.github.io).
+There you can find a [getting started](https://ditdotdev.github.io/getting-started)
+guide as well as [documentation](https://ditdotdev.github.io/docs/).
 
 To connect with members of the community, head over to the
-[community page](https://dit.dev/community) where you can
+[community page](https://ditdotdev.github.io/community) where you can
 [join](https://join.slack.com/t/ditdotdev/shared_invite/zt-4ceh4pj8h-K~mQausrTGuciq4b4QGBLg) the slack workspace. There, you can
 ask questions and get help. If you're not sure whether something is a bug
 or not, be sure to ask there first.
