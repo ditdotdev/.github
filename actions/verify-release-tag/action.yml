@@ -1,0 +1,28 @@
+# Copyright Dit 2026
+# SPDX-License-Identifier: BUSL-1.1
+
+name: Verify release tag
+description: >-
+  Fails unless the run was started by a version tag (X.Y.Z or vX.Y.Z) on a
+  commit that is already on the default branch. Use it as the first step after
+  actions/checkout in every release workflow.
+
+inputs:
+  prefix:
+    description: 'Tag prefix: empty for X.Y.Z tags, "v" for vX.Y.Z tags.'
+    required: false
+    default: ''
+  default-branch:
+    description: Branch that releases are cut from.
+    required: false
+    default: master
+
+runs:
+  using: composite
+  steps:
+    - name: Verify release tag
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/verify-release-tag.sh"
+      env:
+        TAG_PREFIX: ${{ inputs.prefix }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
